@@ -1,0 +1,9 @@
+{
+    "work_dirs": [
+        "/users/Hongshu/thesis-playground/paper-exp/efficiency/work_dir_lama_window"
+    ],
+    "need_download_traces": false,
+    "local_trace_file_dir": "/mntData2/data/oracleReuse",
+    "wget_trace_path": "https://ftp.pdl.cmu.edu/pub/datasets/twemcacheWorkload/cacheDatasets",
+    "python_path": "python3"
+}

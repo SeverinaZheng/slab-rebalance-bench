@@ -4,18 +4,18 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Read username from file
-if [[ ! -f "$SCRIPT_DIR/username.txt" ]]; then
-    echo "Error: username.txt not found in $SCRIPT_DIR"
+if [[ ! -f "$SCRIPT_DIR/../hosts/username.txt" ]]; then
+    echo "Error: username.txt not found in $SCRIPT_DIR/../hosts/"
     exit 1
 fi
-USERNAME=$(cat "$SCRIPT_DIR/username.txt" | tr -d '\n\r')
+USERNAME=$(cat "$SCRIPT_DIR/../hosts/username.txt" | tr -d '\n\r')
 
 # Repository URL
 REPO_URL="https://github.com/hazelnut-99/CacheLib.git"
 
 # Read machines from file
-if [[ ! -f "$SCRIPT_DIR/hosts.txt" ]]; then
-    echo "Error: hosts.txt not found in $SCRIPT_DIR"
+if [[ ! -f "$SCRIPT_DIR/../hosts/hosts.txt" ]]; then
+    echo "Error: hosts.txt not found in $SCRIPT_DIR/../hosts/"
     exit 1
 fi
 
@@ -28,7 +28,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     if [[ -n "$line" ]]; then
         MACHINES+=("$line")
     fi
-done < "$SCRIPT_DIR/hosts.txt"
+done < "$SCRIPT_DIR/../hosts/hosts.txt"
 
 # Debug: Show what was read
 echo "Read ${#MACHINES[@]} hosts from hosts.txt:"
@@ -104,9 +104,23 @@ setup_ssh_keys() {
 # Setup SSH keys before running the main setup
 setup_ssh_keys
 
+# Copy libmock_time.cpp to all hosts
+echo "Copying libmock_time.cpp to all hosts..."
+if [[ -f "$SCRIPT_DIR/../hook_time/libmock_time.cpp" ]]; then
+    for MACHINE in "${MACHINES[@]}"; do
+        echo "Copying libmock_time.cpp to $MACHINE..."
+        ssh "$MACHINE" "mkdir -p /users/$USERNAME/hook_time"
+        scp "$SCRIPT_DIR/../hook_time/libmock_time.cpp" "$MACHINE:/users/$USERNAME/hook_time/"
+    done
+    echo "libmock_time.cpp copied to all hosts."
+else
+    echo "Warning: libmock_time.cpp not found at $SCRIPT_DIR/../hook_time/libmock_time.cpp"
+    echo "Please ensure the file exists before running the script."
+fi
+
 SETUP_CMDS=$(cat <<END_CMDS
 sudo apt-get update -y
-sudo apt-get install python3-pip libglib2.0-dev parallel pssh -y
+sudo apt-get install python3-pip libglib2.0-dev parallel pssh build-essential -y
 pip3 install pandas plotly matplotlib seaborn requests 
 pip3 install nbformat --upgrade
 
@@ -140,6 +154,21 @@ if [ "\$current_branch" != "benchmark-1mb-slab" ]; then
 fi
 git pull origin benchmark-1mb-slab
 sudo ./contrib/build.sh -j -T
+
+# Copy and compile libmock_time.cpp (after cachelib builds)
+cd /users/$USERNAME
+mkdir -p hook_time
+cd hook_time
+# The file will be copied here by scp before this script runs
+if [ -f "libmock_time.cpp" ]; then
+    echo "Compiling libmock_time.cpp..."
+    g++ -shared -fPIC -o libmock_time.so libmock_time.cpp -ldl
+    # Copy the compiled artifact to the user directory
+    cp libmock_time.so /users/$USERNAME/
+    echo "libmock_time.so compiled and copied to /users/$USERNAME/"
+else
+    echo "Warning: libmock_time.cpp not found in hook_time directory"
+fi
 END_CMDS
 )
 
