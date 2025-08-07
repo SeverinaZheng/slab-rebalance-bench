@@ -193,7 +193,7 @@ done
 
 # Test whoami on all hosts
 echo "Running 'whoami' on all hosts:"
-pssh -h "$TEMP_HOSTS_FILE" -i "whoami"
+parallel-ssh -h "$TEMP_HOSTS_FILE" -i "whoami"
 PSSH_EXIT_CODE=$?
 if [ $PSSH_EXIT_CODE -eq 0 ]; then
     echo "✓ All hosts are reachable via parallel-ssh"
