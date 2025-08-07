@@ -1,6 +1,6 @@
 {
     "work_dirs": [
-        "/users/Hongshu/thesis-playground/paper-exp/efficiency/work_dir_lama_window"
+        "/proj/cache-PG0/hongshu/slab-rebalance-bench/exp/demo_dir"
     ],
     "need_download_traces": false,
     "local_trace_file_dir": "/mntData2/data/oracleReuse",
