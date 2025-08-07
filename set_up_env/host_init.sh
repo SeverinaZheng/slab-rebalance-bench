@@ -18,11 +18,39 @@ if [[ ! -f "$SCRIPT_DIR/hosts.txt" ]]; then
     echo "Error: hosts.txt not found in $SCRIPT_DIR"
     exit 1
 fi
-mapfile -t MACHINES < "$SCRIPT_DIR/hosts.txt"
+
+# Read hosts robustly, filtering out empty lines and trimming whitespace
+MACHINES=()
+while IFS= read -r line || [[ -n "$line" ]]; do
+    # Trim leading and trailing whitespace
+    line=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    # Skip empty lines
+    if [[ -n "$line" ]]; then
+        MACHINES+=("$line")
+    fi
+done < "$SCRIPT_DIR/hosts.txt"
+
+# Debug: Show what was read
+echo "Read ${#MACHINES[@]} hosts from hosts.txt:"
+for i in "${!MACHINES[@]}"; do
+    echo "  [$i]: '${MACHINES[$i]}'"
+done
+
+# Validate we have at least one host
+if [ ${#MACHINES[@]} -eq 0 ]; then
+    echo "Error: No valid hosts found in hosts.txt"
+    exit 1
+fi
 
 # Get master host (first in the list)
 MASTER_HOST="${MACHINES[0]}"
-echo "Master host: $MASTER_HOST"
+echo "Master host: '$MASTER_HOST'"
+
+# Validate master host is not empty
+if [ -z "$MASTER_HOST" ]; then
+    echo "Error: Master host is empty after processing"
+    exit 1
+fi
 
 # Function to setup SSH keys
 setup_ssh_keys() {
