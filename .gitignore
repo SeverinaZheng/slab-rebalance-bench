@@ -11,6 +11,9 @@ rc.txt
 rx*.json
 worker.log
 result.json
+running.lock
+master.log
+nohup.out
 
 # Python cache files
 __pycache__/
