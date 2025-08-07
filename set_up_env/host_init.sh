@@ -106,15 +106,15 @@ setup_ssh_keys
 
 # Copy libmock_time.cpp to all hosts
 echo "Copying libmock_time.cpp to all hosts..."
-if [[ -f "$SCRIPT_DIR/../hook_time/libmock_time.cpp" ]]; then
+if [[ -f "$SCRIPT_DIR/hook_time/libmock_time.cpp" ]]; then
     for MACHINE in "${MACHINES[@]}"; do
         echo "Copying libmock_time.cpp to $MACHINE..."
         ssh "$MACHINE" "mkdir -p /users/$USERNAME/hook_time"
-        scp "$SCRIPT_DIR/../hook_time/libmock_time.cpp" "$MACHINE:/users/$USERNAME/hook_time/"
+        scp "$SCRIPT_DIR/hook_time/libmock_time.cpp" "$MACHINE:/users/$USERNAME/hook_time/"
     done
     echo "libmock_time.cpp copied to all hosts."
 else
-    echo "Warning: libmock_time.cpp not found at $SCRIPT_DIR/../hook_time/libmock_time.cpp"
+    echo "Warning: libmock_time.cpp not found at $SCRIPT_DIR/hook_time/libmock_time.cpp"
     echo "Please ensure the file exists before running the script."
 fi
 
