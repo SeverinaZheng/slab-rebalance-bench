@@ -157,17 +157,18 @@ sudo ./contrib/build.sh -j -T
 
 # Copy and compile libmock_time.cpp (after cachelib builds)
 cd /users/$USERNAME
-mkdir -p hook_time
-cd hook_time
-# The file will be copied here by scp before this script runs
-if [ -f "libmock_time.cpp" ]; then
-    echo "Compiling libmock_time.cpp..."
+# Check if libmock_time.cpp was copied to hook_time directory
+if [ -f "hook_time/libmock_time.cpp" ]; then
+    echo "Found libmock_time.cpp in hook_time directory. Compiling..."
+    cd hook_time
     g++ -shared -fPIC -o libmock_time.so libmock_time.cpp -ldl
     # Copy the compiled artifact to the user directory
     cp libmock_time.so /users/$USERNAME/
     echo "libmock_time.so compiled and copied to /users/$USERNAME/"
 else
     echo "Warning: libmock_time.cpp not found in hook_time directory"
+    echo "Expected location: /users/$USERNAME/hook_time/libmock_time.cpp"
+    ls -la /users/$USERNAME/hook_time/ || echo "hook_time directory does not exist"
 fi
 END_CMDS
 )
