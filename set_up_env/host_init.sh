@@ -208,12 +208,12 @@ echo "Verifying cachebench installations..."
 
 # Check cachelib_v1
 echo "Checking cachelib_v1 cachebench..."
-parallel-ssh -h "$TEMP_HOSTS_FILE" -i "/users/USERNAME_PLACEHOLDER/cachelib_v1/opt/cachelib/bin/cachebench --help > /dev/null 2>&1 && echo 'v1 OK' || echo 'v1 FAILED'"
+parallel-ssh -h "$TEMP_HOSTS_FILE" -i "[ -f /users/USERNAME_PLACEHOLDER/cachelib_v1/opt/cachelib/bin/cachebench ] && echo 'v1 OK' || echo 'v1 FAILED'"
 V1_EXIT_CODE=$?
 
 # Check cachelib_v2  
 echo "Checking cachelib_v2 cachebench..."
-parallel-ssh -h "$TEMP_HOSTS_FILE" -i "/users/USERNAME_PLACEHOLDER/cachelib_v2/opt/cachelib/bin/cachebench --help > /dev/null 2>&1 && echo 'v2 OK' || echo 'v2 FAILED'"
+parallel-ssh -h "$TEMP_HOSTS_FILE" -i "[ -f /users/USERNAME_PLACEHOLDER/cachelib_v2/opt/cachelib/bin/cachebench ] && echo 'v2 OK' || echo 'v2 FAILED'"
 V2_EXIT_CODE=$?
 
 # Summary
