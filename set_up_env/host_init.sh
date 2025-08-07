@@ -181,15 +181,17 @@ wait
 echo "All setups finished."
 
 # Verification and connectivity tests
-echo "Running verification tests..."
+echo "Running verification tests from master host: $MASTER_HOST..."
 
-# Test connectivity with parallel-ssh
+# Create verification commands to run on master host
+VERIFICATION_CMDS=$(cat <<'EOF'
+# Create a temporary hosts file for parallel-ssh (without username prefix)
+TEMP_HOSTS_FILE="/tmp/temp_hosts_pssh.txt"
+cat > "$TEMP_HOSTS_FILE" << HOSTS_EOF
+HOST_LIST_PLACEHOLDER
+HOSTS_EOF
+
 echo "Testing connectivity to all hosts with parallel-ssh..."
-# Create a temporary hosts file for pssh (without username prefix)
-TEMP_HOSTS_FILE="$SCRIPT_DIR/temp_hosts_pssh.txt"
-for MACHINE in "${MACHINES[@]}"; do
-    echo "$MACHINE" >> "$TEMP_HOSTS_FILE"
-done
 
 # Test whoami on all hosts
 echo "Running 'whoami' on all hosts:"
@@ -206,12 +208,12 @@ echo "Verifying cachebench installations..."
 
 # Check cachelib_v1
 echo "Checking cachelib_v1 cachebench..."
-pssh -h "$TEMP_HOSTS_FILE" -i "/users/$USERNAME/cachelib_v1/opt/cachelib/bin/cachebench --help > /dev/null 2>&1 && echo 'v1 OK' || echo 'v1 FAILED'"
+parallel-ssh -h "$TEMP_HOSTS_FILE" -i "/users/USERNAME_PLACEHOLDER/cachelib_v1/opt/cachelib/bin/cachebench --help > /dev/null 2>&1 && echo 'v1 OK' || echo 'v1 FAILED'"
 V1_EXIT_CODE=$?
 
 # Check cachelib_v2  
 echo "Checking cachelib_v2 cachebench..."
-pssh -h "$TEMP_HOSTS_FILE" -i "/users/$USERNAME/cachelib_v2/opt/cachelib/bin/cachebench --help > /dev/null 2>&1 && echo 'v2 OK' || echo 'v2 FAILED'"
+parallel-ssh -h "$TEMP_HOSTS_FILE" -i "/users/USERNAME_PLACEHOLDER/cachelib_v2/opt/cachelib/bin/cachebench --help > /dev/null 2>&1 && echo 'v2 OK' || echo 'v2 FAILED'"
 V2_EXIT_CODE=$?
 
 # Summary
@@ -235,12 +237,26 @@ else
 fi
 
 # Cleanup temporary files
+rm -f "$TEMP_HOSTS_FILE"
+EOF
+)
+
+# Create the host list for the verification script
+HOST_LIST=""
+for MACHINE in "${MACHINES[@]}"; do
+    HOST_LIST="${HOST_LIST}${MACHINE}\n"
+done
+
+# Replace placeholders in verification commands
+VERIFICATION_CMDS=$(echo "$VERIFICATION_CMDS" | sed "s/HOST_LIST_PLACEHOLDER/$HOST_LIST/g" | sed "s/USERNAME_PLACEHOLDER/$USERNAME/g")
+
+# Execute verification commands on master host
+ssh "$MASTER_HOST" "$VERIFICATION_CMDS"
+
+# Cleanup temporary files
 if [ -f "$SCRIPT_DIR/master_id_rsa.pub" ]; then
     rm "$SCRIPT_DIR/master_id_rsa.pub"
     echo "Cleaned up temporary SSH key file."
 fi
 
-if [ -f "$TEMP_HOSTS_FILE" ]; then
-    rm "$TEMP_HOSTS_FILE"
-    echo "Cleaned up temporary hosts file."
-fi
+echo "Verification complete. All temporary files cleaned up."
