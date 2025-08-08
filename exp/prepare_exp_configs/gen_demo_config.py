@@ -91,7 +91,7 @@ cache_configs = {
     "tail-age": [{"rebalanceDiffRatio": 0.25, "wakeUpRebalancerEveryXReqs": wakeup} for wakeup in rebalance_intervals],
     "free-mem": [{"wakeUpRebalancerEveryXReqs": wakeup} for wakeup in rebalance_intervals],
     "eviction-rate": [{"rebalanceDiffRatio": 0.1, "wakeUpRebalancerEveryXReqs": wakeup} for wakeup in rebalance_intervals],
-    "lama": [{"wakeUpRebalancerEveryXReqs": 1000_000, "lamaMinThreshold": 0.00001}],
+    #"lama": [{"wakeUpRebalancerEveryXReqs": 1000_000, "lamaMinThreshold": 0.00001}],
 }
 
 # Global work directory configuration

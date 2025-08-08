@@ -1,6 +1,9 @@
 {
     "work_dirs": [
-        "/proj/cache-PG0/hongshu/slab-rebalance-bench/exp/demo_dir"
+        "/mnt/cfs/hongshu/slab-rebalance-bench/exp/demo_dir",
+        "/mnt/cfs/hongshu/slab-rebalance-bench/exp/work_dir_meta",
+        "/mnt/cfs/hongshu/slab-rebalance-bench/exp/work_dir_twitter",
+        "/mnt/cfs/hongshu/slab-rebalance-bench/exp/work_dir_cdn"
     ],
     "need_download_traces": false,
     "local_trace_file_dir": "/mntData2/data/oracleReuse",

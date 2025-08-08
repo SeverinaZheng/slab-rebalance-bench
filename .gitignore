@@ -14,6 +14,7 @@ result.json
 running.lock
 master.log
 nohup.out
+tx.*.json
 
 # Python cache files
 __pycache__/

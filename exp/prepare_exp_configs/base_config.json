@@ -19,6 +19,7 @@
         "enableLookaside": true,
         "timestampFactor": 1,
         "numThreads": 1,
+        "ignoreLargeReq": true,
         "prepopulateCache": true,
         "zstdTrace": true,
         "compressed": true

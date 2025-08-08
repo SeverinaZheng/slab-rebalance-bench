@@ -43,6 +43,7 @@ def generate_node_resources(hosts):
     """
     Dynamically generate NODE_RESOURCES by querying each host for CPU and memory info.
     First host is treated as master with reduced capacity.
+    Helps us decide how many slots on each host
     """
     node_resources = {}
     
@@ -68,9 +69,9 @@ def generate_node_resources(hosts):
             
             # Calculate usable resources based on role
             if is_master:
-                # Master: 50% CPU, 80% memory
+                # Master: 50% CPU, 40% memory, make sure the master node is not overloaded
                 usable_cpus = int(total_cpus * 0.5)
-                usable_mem_mb = int(total_mem_mb * 0.8)
+                usable_mem_mb = int(total_mem_mb * 0.4)
                 role = "master"
             else:
                 # Worker: 100% CPU, 90% memory
@@ -92,7 +93,11 @@ def generate_node_resources(hosts):
             logging.warning(f"Failed to query {host} ({e}). Using defaults: "
                           f"{default_cpu} CPUs, {default_mem}MB memory")
     
-    logging.info(f"Generated NODE_RESOURCES: {node_resources}")
+    # Log NODE_RESOURCES summary instead of full dictionary to avoid long lines
+    total_hosts = len(node_resources)
+    total_cpu = sum(res["cpu"] for res in node_resources.values())
+    total_mem = sum(res["mem"] for res in node_resources.values())
+    logging.info(f"Generated NODE_RESOURCES for {total_hosts} hosts: {total_cpu} total CPUs, {total_mem}MB total memory")
     return node_resources
 
 # Read configuration from configs.json
@@ -112,6 +117,14 @@ LOG_FILE = os.path.join(LOG_DIR, "master.log")                 # Log file for th
 # =====================
 
 # --- HELPER FUNCTIONS ---
+
+def safe_log_string(text, max_length=200):
+    """
+    Safely truncate long strings for logging to prevent text editor rendering issues.
+    """
+    if len(text) <= max_length:
+        return text
+    return text[:max_length] + f"... (truncated, total length: {len(text)})"
 
 def get_remote_file_size(url):
     """Gets the size of a remote file in bytes using an HTTP HEAD request."""
@@ -208,7 +221,8 @@ def download_trace(meta):
     res = subprocess.run(["sudo", "bash", "-c", download_cmd], capture_output=True)
 
     if res.returncode != 0:
-        logging.error(f"Failed to download {url}. wget stderr: {res.stderr.decode()}")
+        stderr_output = safe_log_string(res.stderr.decode(), 300)
+        logging.error(f"Failed to download {url}. wget stderr: {stderr_output}")
         # Clean up potentially incomplete file
         if os.path.exists(local_path):
              subprocess.run(["sudo", "rm", "-f", local_path])
@@ -343,7 +357,8 @@ def is_process_actually_running(hostname, uuid):
                 return False
         else:
             # Command failed - treat as still running to be safe
-            logging.warning(f"Process check failed (code {result.returncode}) when checking {uuid} on {hostname}: {result.stderr.strip()}. Assuming still running.")
+            stderr_output = safe_log_string(result.stderr.strip(), 200)
+            logging.warning(f"Process check failed (code {result.returncode}) when checking {uuid} on {hostname}: {stderr_output}. Assuming still running.")
             return True
             
     except subprocess.TimeoutExpired:
@@ -504,7 +519,7 @@ def trace_file_status_count(exps, status):
     return count
 
 def schedule_experiments_reconstructable():
-    """Main scheduler function with state reconstruction - processes multiple work directories sequentially."""
+    """Main scheduler function with state reconstruction - processes all work directories together by flattening experiments."""
     log_formatter = logging.Formatter("%(asctime)s %(levelname)s: %(message)s", datefmt='%Y-%m-%d %H:%M:%S')
     handler = RotatingFileHandler(LOG_FILE, maxBytes=10*1024*1024, backupCount=5)  # 10MB per file, keep 5 backups
     handler.setFormatter(log_formatter)
@@ -513,7 +528,10 @@ def schedule_experiments_reconstructable():
     logging.getLogger().setLevel(logging.INFO)
     
     logging.info("--- Scheduler Starting ---")
-    logging.info(f"Will process {len(WORK_DIRS)} work directories sequentially: {WORK_DIRS}")
+    logging.info(f"Will process {len(WORK_DIRS)} work directories")
+    # Log work directories individually to avoid extremely long lines
+    for i, work_dir in enumerate(WORK_DIRS, 1):
+        logging.info(f"  Work directory {i}: {work_dir}")
     
     hosts = get_hosts(HOSTS_FILE)
     logging.info("Found hosts: " + ", ".join(hosts))
@@ -526,186 +544,204 @@ def schedule_experiments_reconstructable():
     # Generate node resources dynamically
     NODE_RESOURCES = generate_node_resources(hosts)
     
-    # Process each work directory sequentially
-    for work_dir_index, current_work_dir in enumerate(WORK_DIRS):
-        logging.info(f"=== Starting work directory {work_dir_index + 1}/{len(WORK_DIRS)}: {current_work_dir} ===")
-        
-        if not os.path.exists(current_work_dir):
-            logging.warning(f"Work directory {current_work_dir} does not exist. Skipping.")
+    # Flatten all experiments from all work directories
+    logging.info("=== Scanning and flattening experiments from all work directories ===")
+    all_exps = []
+    work_dir_stats = {}
+    
+    for work_dir in WORK_DIRS:
+        if not os.path.exists(work_dir):
+            logging.warning(f"Work directory {work_dir} does not exist. Skipping.")
+            work_dir_stats[work_dir] = 0
             continue
         
-        master_start_time = time.time() # For reconstructed jobs
-
-        all_exps = scan_experiments(current_work_dir)
-        if not all_exps:
-            logging.info(f"No experiments found in {current_work_dir}. Skipping.")
-            continue
-            
-        trace_to_exps = group_by_trace(all_exps)
-
-        # --- STATE TRACKING ---
-        node_usage = {host: {"cpu": 0, "mem": 0} for host in hosts}
-        running_jobs = {}  # {exp_dir: {"host": host, "start_time": timestamp}}
-
-        # --- STATE RECONSTRUCTION ON STARTUP ---
-        logging.info(f"Reconstructing state from filesystem for {current_work_dir}...")
-        for exp in all_exps:
-            # Use the robust get_exp_status during reconstruction
-            status = get_exp_status(exp)
-            if status == "running":
-                logging.info(f"Reconstructing running job: {exp['dir']}")
-                exp_dir = exp["dir"]
-                running_host = get_running_info(exp) # We know this is valid now
-                meta = exp["meta"]
-                cpu_req = meta["cpu_requirement"]
-                mem_req = meta["memory_requirement"] * 1.2 ### over-sell a bit, there are oom problems sometimes
-                node_usage[running_host]["cpu"] += cpu_req
-                node_usage[running_host]["mem"] += mem_req
-                running_jobs[exp_dir] = {"host": running_host, "start_time": master_start_time}
-                logging.info(f"Reconstructed state for running job {os.path.basename(exp_dir)} on {running_host}")
-
-        logging.info(f"--- State Reconstruction Complete for {current_work_dir}. Starting Main Loop. ---")
+        work_dir_exps = scan_experiments(work_dir)
+        work_dir_stats[work_dir] = len(work_dir_exps)
+        all_exps.extend(work_dir_exps)
+        logging.info(f"Found {len(work_dir_exps)} experiments in {work_dir}")
+    
+    if not all_exps:
+        logging.info("No experiments found in any work directory. Exiting.")
+        return
+    
+    logging.info(f"Total experiments across all work directories: {len(all_exps)}")
+    for work_dir, count in work_dir_stats.items():
+        logging.info(f"  - {work_dir}: {count} experiments")
         
-        last_system_log_time = 0
+    trace_to_exps = group_by_trace(all_exps)
+    logging.info(f"Experiments grouped into {len(trace_to_exps)} trace files")
+    
+    master_start_time = time.time() # For reconstructed jobs
 
-        # --- MAIN SCHEDULING LOOP FOR CURRENT WORK DIRECTORY ---
-        while True:
-            # 1. UPDATE STATE: Check for finished jobs and free up resources
-            finished_jobs = []
-            for exp_dir, job_info in list(running_jobs.items()):
-                host = job_info['host']
-                exp_obj = next((exp for exp in all_exps if exp["dir"] == exp_dir), None)
-                if exp_obj is None: continue
-                
-                status = get_exp_status(exp_obj)
-                if status != "running": # Job has finished or failed (including stale)
-                    meta = exp_obj["meta"]
-                    cpu_req = meta["cpu_requirement"]
-                    mem_req = meta["memory_requirement"] * 1.2
-                    node_usage[host]["cpu"] = max(0, node_usage[host]["cpu"] - cpu_req)
-                    node_usage[host]["mem"] = max(0, node_usage[host]["mem"] - mem_req)
-                    
-                    end_time = time.time()
-                    run_time_seconds = end_time - job_info['start_time']
-                    run_time_formatted = str(timedelta(seconds=int(run_time_seconds)))
-                    
-                    logging.info(f"Job {os.path.basename(exp_dir)} ended on {host} with status '{status}' after {run_time_formatted}. Freed resources.")
-                    finished_jobs.append(exp_dir)
+    # --- STATE TRACKING ---
+    node_usage = {host: {"cpu": 0, "mem": 0} for host in hosts}
+    running_jobs = {}  # {exp_dir: {"host": host, "start_time": timestamp}}
+
+    # --- STATE RECONSTRUCTION ON STARTUP ---
+    logging.info("Reconstructing state from filesystem for all experiments...")
+    for exp in all_exps:
+        # Use the robust get_exp_status during reconstruction
+        status = get_exp_status(exp)
+        if status == "running":
+            logging.info(f"Reconstructing running job: {exp['dir']}")
+            exp_dir = exp["dir"]
+            running_host = get_running_info(exp) # We know this is valid now
+            meta = exp["meta"]
+            cpu_req = meta["cpu_requirement"]
+            mem_req = meta["memory_requirement"] 
+            node_usage[running_host]["cpu"] += cpu_req
+            node_usage[running_host]["mem"] += mem_req
+            running_jobs[exp_dir] = {"host": running_host, "start_time": master_start_time}
+            logging.info(f"Reconstructed state for running job {os.path.basename(exp_dir)} on {running_host}")
+
+    logging.info("--- State Reconstruction Complete for all experiments. Starting Main Loop. ---")
+    
+    last_system_log_time = 0
+
+    # --- MAIN SCHEDULING LOOP FOR ALL FLATTENED EXPERIMENTS ---
+    while True:
+        # 1. UPDATE STATE: Check for finished jobs and free up resources
+        finished_jobs = []
+        for exp_dir, job_info in list(running_jobs.items()):
+            host = job_info['host']
+            exp_obj = next((exp for exp in all_exps if exp["dir"] == exp_dir), None)
+            if exp_obj is None: continue
             
-            for job_dir in finished_jobs:
-                if job_dir in running_jobs:
-                    del running_jobs[job_dir]
-
-            # 2. MANAGE TRACES: Check if any traces can be deleted (only if downloading is enabled)
-            if NEED_DOWNLOAD_TRACES:
-                for trace_file, exps_for_trace in trace_to_exps.items():
-                    if os.path.exists(trace_file) and all_exps_done(exps_for_trace):
-                        is_still_running = any(exp['dir'] in running_jobs for exp in exps_for_trace)
-                        if not is_still_running:
-                            delete_trace(trace_file)
-
-            # 3. SCHEDULE NEW JOBS (MODIFIED LOGIC)
-            progress_made = False
-            pending_exps = [exp for exp in all_exps if get_exp_status(exp) == "todo"]
-
-            trace_file_to_pending_count = trace_file_status_count(all_exps, "todo")
-            trace_file_to_finished_count = trace_file_status_count(all_exps, "finished")
-
-            random.shuffle(pending_exps)
-            pending_exps.sort(
-                key=lambda exp: (
-                    -trace_file_to_finished_count[exp["meta"]["trace_file"]],
-                    trace_file_to_pending_count[exp["meta"]["trace_file"]]
-                )
-            )
-            #random.shuffle(pending_exps)
-
-            # --- Phase 1: Schedule all possible jobs (with trace checks if downloading enabled) ---
-            for exp in pending_exps:
-                trace_file = exp["meta"]["trace_file"]
-                # Skip trace existence check if downloading is disabled (assume all traces exist)
-                if NEED_DOWNLOAD_TRACES and not os.path.exists(trace_file):
-                    continue # Skip if trace doesn't exist and downloading is enabled
-                
-                exp_dir = exp["dir"]
-                meta = exp["meta"]
+            status = get_exp_status(exp_obj)
+            if status != "running": # Job has finished or failed (including stale)
+                meta = exp_obj["meta"]
                 cpu_req = meta["cpu_requirement"]
                 mem_req = meta["memory_requirement"]
+                node_usage[host]["cpu"] = max(0, node_usage[host]["cpu"] - cpu_req)
+                node_usage[host]["mem"] = max(0, node_usage[host]["mem"] - mem_req)
                 
-                eligible_hosts = []
-                for host in hosts:
-                    node_res = NODE_RESOURCES.get(host, {"cpu": 0, "mem": 0})
-                    usage = node_usage.get(host, {"cpu": 0, "mem": 0})
-                    mem_free_percent = get_host_mem_free_percent(host)
-                    if mem_free_percent is None or mem_free_percent <= 15.0:
-                        continue
-                    if usage["cpu"] + cpu_req <= node_res["cpu"] and usage["mem"] + mem_req <= node_res["mem"]:
-                        eligible_hosts.append(host)
-
-                if not eligible_hosts:
-                    continue
-
-                chosen_host = random.choice(eligible_hosts)
-                uuid = os.path.basename(exp_dir)
-
-                logging.info(f"Dispatching {uuid} to {chosen_host}...")
+                end_time = time.time()
+                run_time_seconds = end_time - job_info['start_time']
+                run_time_formatted = str(timedelta(seconds=int(run_time_seconds)))
                 
-                remote_cmd_py = f'from util import run_cachebench; run_cachebench("{exp_dir}")'
-                remote_cmd = (
-                    f"cd {SCRIPTS_DIR} && "
-                    f"nohup env CACHEBENCH_UUID={uuid} {PYTHON_EXEC} -c '{remote_cmd_py}' "
-                    f"> {exp_dir}/worker.log 2>&1 &"
-                )
-                
-                subprocess.Popen(["ssh", chosen_host, remote_cmd])
-                
-                mark_exp_running(exp, chosen_host)
-                node_usage[chosen_host]["cpu"] += cpu_req
-                node_usage[chosen_host]["mem"] += mem_req
-                running_jobs[exp_dir] = {"host": chosen_host, "start_time": time.time()}
-                progress_made = True
-                time.sleep(1)
-
-            # --- Phase 2: If no progress was made, try to download one trace (only if downloading enabled) ---
-            if NEED_DOWNLOAD_TRACES and not progress_made and pending_exps:
-                logging.info("No launchable jobs with existing traces. Attempting to download a new trace.")
-                # Find the first pending experiment that needs a trace
-                #random.shuffle(pending_exps)  # Shuffle to avoid bias
-                for exp in pending_exps:
-                    if not os.path.exists(exp["meta"]["trace_file"]):
-                        if download_trace(exp["meta"]):
-                            logging.info("Trace download successful. Will schedule jobs for it in the next cycle.")
-                        else:
-                            logging.warning("Trace download failed. Will try again later.")
-                        # We consider the download attempt as progress to prevent a long sleep
-                        progress_made = True
-                        break # Only attempt one download per cycle
-            
-            # 4. LOGGING AND SLEEP
-            now = time.time()
-            if now - last_system_log_time > 60:
-                log_node_system_stats(hosts)
-                log_running_job_stats(running_jobs)
-                dump_state_to_file(all_exps, running_jobs, STATE_FILE) # Dump state here
-                last_system_log_time = now
-                
-            log_status_summary(all_exps, running_jobs)
-
-            # Check if all jobs are in a finished or failed state for current work directory
-            all_jobs_accounted_for = all(get_exp_status(exp) in ["finished", "failed"] for exp in all_exps)
-            if not running_jobs and all_jobs_accounted_for:
-                logging.info(f"All experiments completed for {current_work_dir}. Moving to next work directory.")
-                break
-            
-            sleep_time = 5 if progress_made else 60
-            logging.info(f"Loop finished. Sleeping for {sleep_time} seconds.")
-            time.sleep(sleep_time)
+                logging.info(f"Job {os.path.basename(exp_dir)} ended on {host} with status '{status}' after {run_time_formatted}. Freed resources.")
+                finished_jobs.append(exp_dir)
         
-        # Work directory completed
-        logging.info(f"=== Completed work directory {work_dir_index + 1}/{len(WORK_DIRS)}: {current_work_dir} ===")
+        for job_dir in finished_jobs:
+            if job_dir in running_jobs:
+                del running_jobs[job_dir]
 
-    # All work directories completed
-    logging.info("=== ALL WORK DIRECTORIES COMPLETED. CALLING SUMMARIZE SCRIPT ===")
+        # 2. MANAGE TRACES: Check if any traces can be deleted (only if downloading is enabled)
+        if NEED_DOWNLOAD_TRACES:
+            for trace_file, exps_for_trace in trace_to_exps.items():
+                if os.path.exists(trace_file) and all_exps_done(exps_for_trace):
+                    is_still_running = any(exp['dir'] in running_jobs for exp in exps_for_trace)
+                    if not is_still_running:
+                        delete_trace(trace_file)
+
+        # 3. SCHEDULE NEW JOBS (MODIFIED LOGIC)
+        progress_made = False
+        pending_exps = [exp for exp in all_exps if get_exp_status(exp) == "todo"]
+
+        trace_file_to_pending_count = trace_file_status_count(all_exps, "todo")
+        trace_file_to_finished_count = trace_file_status_count(all_exps, "finished")
+
+        random.shuffle(pending_exps)
+        pending_exps.sort(
+            key=lambda exp: (
+                -trace_file_to_finished_count[exp["meta"]["trace_file"]],
+                trace_file_to_pending_count[exp["meta"]["trace_file"]]
+            )
+        )
+        #random.shuffle(pending_exps)
+
+        # --- Phase 1: Schedule all possible jobs (with trace checks if downloading enabled) ---
+        for exp in pending_exps:
+            trace_file = exp["meta"]["trace_file"]
+            # Skip trace existence check if downloading is disabled (assume all traces exist)
+            if NEED_DOWNLOAD_TRACES and not os.path.exists(trace_file):
+                continue # Skip if trace doesn't exist and downloading is enabled
+            
+            exp_dir = exp["dir"]
+            meta = exp["meta"]
+            cpu_req = meta["cpu_requirement"]
+            mem_req = meta["memory_requirement"]
+            
+            # First, filter hosts by static resource availability (CPU and memory requirements)
+            candidate_hosts = []
+            for host in hosts:
+                node_res = NODE_RESOURCES.get(host, {"cpu": 0, "mem": 0})
+                usage = node_usage.get(host, {"cpu": 0, "mem": 0})
+                if usage["cpu"] + cpu_req <= node_res["cpu"] and usage["mem"] + mem_req <= node_res["mem"]:
+                    candidate_hosts.append(host)
+            
+            if not candidate_hosts:
+                continue
+            
+            # Second, check actual memory usage for candidate hosts and find the one with highest free memory
+            eligible_hosts = []
+            for host in candidate_hosts:
+                mem_free_percent = get_host_mem_free_percent(host)
+                if mem_free_percent is not None and mem_free_percent > 15.0:
+                    eligible_hosts.append((host, mem_free_percent))
+            
+            if not eligible_hosts:
+                continue
+            
+            # Choose the host with the largest free memory percentage
+            chosen_host = max(eligible_hosts, key=lambda x: x[1])[0]
+            uuid = os.path.basename(exp_dir)
+
+            logging.info(f"Dispatching {uuid} to {chosen_host}...")
+            
+            remote_cmd_py = f'from util import run_cachebench; run_cachebench("{exp_dir}")'
+            remote_cmd = (
+                f"cd {SCRIPTS_DIR} && "
+                f"nohup env CACHEBENCH_UUID={uuid} {PYTHON_EXEC} -c '{remote_cmd_py}' "
+                f"> {exp_dir}/worker.log 2>&1 &"
+            )
+            
+            subprocess.Popen(["ssh", chosen_host, remote_cmd])
+            
+            mark_exp_running(exp, chosen_host)
+            node_usage[chosen_host]["cpu"] += cpu_req
+            node_usage[chosen_host]["mem"] += mem_req
+            running_jobs[exp_dir] = {"host": chosen_host, "start_time": time.time()}
+            progress_made = True
+            time.sleep(1)
+
+        # --- Phase 2: If no progress was made, try to download one trace (only if downloading enabled) ---
+        if NEED_DOWNLOAD_TRACES and not progress_made and pending_exps:
+            logging.info("No launchable jobs with existing traces. Attempting to download a new trace.")
+            # Find the first pending experiment that needs a trace
+            #random.shuffle(pending_exps)  # Shuffle to avoid bias
+            for exp in pending_exps:
+                if not os.path.exists(exp["meta"]["trace_file"]):
+                    if download_trace(exp["meta"]):
+                        logging.info("Trace download successful. Will schedule jobs for it in the next cycle.")
+                    else:
+                        logging.warning("Trace download failed. Will try again later.")
+                    # We consider the download attempt as progress to prevent a long sleep
+                    progress_made = True
+                    break # Only attempt one download per cycle
+        
+        # 4. LOGGING AND SLEEP
+        now = time.time()
+        if now - last_system_log_time > 60:
+            log_node_system_stats(hosts)
+            log_running_job_stats(running_jobs)
+            dump_state_to_file(all_exps, running_jobs, STATE_FILE) # Dump state here
+            last_system_log_time = now
+            
+        log_status_summary(all_exps, running_jobs)
+
+        # Check if all jobs are in a finished or failed state for all experiments
+        all_jobs_accounted_for = all(get_exp_status(exp) in ["finished", "failed"] for exp in all_exps)
+        if not running_jobs and all_jobs_accounted_for:
+            logging.info("All experiments completed across all work directories. Proceeding to summarization.")
+            break
+        
+        sleep_time = 5 if progress_made else 60
+        logging.info(f"Loop finished. Sleeping for {sleep_time} seconds.")
+        time.sleep(sleep_time)
+
+    # All experiments completed
+    logging.info("=== ALL EXPERIMENTS COMPLETED. CALLING SUMMARIZE SCRIPT ===")
     
     # Call summarize_result.py to generate final report
     result_csv_path = os.path.join(LOG_DIR, "result.csv")
@@ -733,12 +769,14 @@ def schedule_experiments_reconstructable():
         
         if result.returncode == 0:
             logging.info(f"Successfully generated summary report. Results have been written to {result_csv_path}")
-            # Also log any output from the summarize script
+            # Also log any output from the summarize script (truncated for safety)
             if result.stdout.strip():
-                logging.info(f"Summarize script output: {result.stdout.strip()}")
+                stdout_output = safe_log_string(result.stdout.strip(), 500)
+                logging.info(f"Summarize script output: {stdout_output}")
         else:
             logging.error(f"Summarize script failed with return code {result.returncode}")
-            logging.error(f"Error output: {result.stderr}")
+            stderr_output = safe_log_string(result.stderr, 500)
+            logging.error(f"Error output: {stderr_output}")
             
     except subprocess.TimeoutExpired:
         logging.error("Summarize script timed out after 10 minutes")
