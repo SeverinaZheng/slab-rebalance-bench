@@ -11,7 +11,7 @@ time complexity: O(n)
    - sort the first access time of each unique object: O(m * logm)
    - sort the last access time of each unique object: O(m * logm)
    - prefix sum for the reuseTimeHistogram: worst case O(n), could be cheapter though, depends on how many different reuse times there are.
-   footprint for each window size: O(n * logn)
+   footprint for each window size:
    O(m + n)
 
 3. from footprint values to MRC

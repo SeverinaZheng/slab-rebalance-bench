@@ -16,6 +16,8 @@ master.log
 nohup.out
 tx.*.json
 
+scheduler_state.json
+
 # Python cache files
 __pycache__/
 *.py[cod]
