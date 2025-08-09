@@ -127,7 +127,7 @@ def plot_cdn_bars(trace_name, csv_file, output_dir=None):
     plt.tight_layout()
     
     # Save the figure in the specified output directory
-    output_path = os.path.join(output_dir, f"cdn_bars_{trace_name}.pdf")
+    output_path = os.path.join(output_dir, f"cdn_bars_miss_ratio_{trace_name}.pdf")
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.close()
     

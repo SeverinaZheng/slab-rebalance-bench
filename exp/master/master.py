@@ -276,7 +276,9 @@ def get_host_mem_free_percent(host):
             ["ssh", host, mem_util_cmd],
             capture_output=True, text=True, check=True, timeout=10
         )
-        return float(mem_result.stdout.strip())
+        # Sanitize output by removing null bytes and non-printable characters
+        mem_output = mem_result.stdout.replace('\x00', '').strip()
+        return float(mem_output) if mem_output else None
     except Exception:
         return None
 
@@ -285,13 +287,15 @@ def log_node_system_stats(hosts):
     logging.info("--- System-wide Resource Utilization ---")
     for host in hosts:
         try:
-            # Get CPU Utilization (100 - idle %)
-            cpu_util_cmd = "top -bn1 | grep 'Cpu(s)' | awk '{print 100.0 - $8}'"
+            # Get CPU Utilization using vmstat (more reliable than top)
+            cpu_util_cmd = "vmstat 1 2 | tail -1 | awk '{print 100.0 - $15}'"
             cpu_result = subprocess.run(
                 ["ssh", host, cpu_util_cmd],
-                capture_output=True, text=True, check=True, timeout=10
+                capture_output=True, text=True, check=True, timeout=15
             )
-            cpu_util = float(cpu_result.stdout.strip())
+            # Sanitize output by removing null bytes and non-printable characters
+            cpu_output = cpu_result.stdout.replace('\x00', '').strip()
+            cpu_util = float(cpu_output) if cpu_output else 0.0
 
             # Get Free Memory Percentage ( (available / total) * 100 )
             mem_util_cmd = "free -m | awk '/^Mem:/ {printf \"%.2f\", $7/$2 * 100.0}'"
@@ -299,7 +303,9 @@ def log_node_system_stats(hosts):
                 ["ssh", host, mem_util_cmd],
                 capture_output=True, text=True, check=True, timeout=10
             )
-            mem_free_percent = float(mem_result.stdout.strip())
+            # Sanitize output by removing null bytes and non-printable characters
+            mem_output = mem_result.stdout.replace('\x00', '').strip()
+            mem_free_percent = float(mem_output) if mem_output else 0.0
 
             logging.info(f"  - Host: {host:<30} CPU Util: {cpu_util:5.1f}% | Mem Free: {mem_free_percent:5.1f}%")
 

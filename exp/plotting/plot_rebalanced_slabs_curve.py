@@ -24,11 +24,11 @@ def plot_rebalanced_slabs(trace_name, data_path, output_dir="."):
     # Read the data
     df = pd.read_csv(data_path)
     
-    # Filter by trace_name
-    df_filtered = df[df['trace_name'] == trace_name].copy()
+    # Filter by trace_name and exclude 'disabled' strategy (always 0 rebalanced slabs)
+    df_filtered = df[(df['trace_name'] == trace_name) & (df['rebalance_strategy'] != 'disabled')].copy()
     
     if df_filtered.empty:
-        print(f"No data found for trace_name: {trace_name}")
+        print(f"No data found for trace_name: {trace_name} (after excluding disabled strategy)")
         return
     
     # Convert wsr to percentage

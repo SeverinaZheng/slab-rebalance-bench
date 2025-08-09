@@ -25,7 +25,7 @@ def create_twitter_prod_boxplots(csv_file, output_dir=None, need_all_strategy=Fa
     # Read the CSV file
     df = pd.read_csv(csv_file)
     df = df[(df['trace_name'].str.startswith('twitter')) & (df['tag'] != 'warm-cold') & 
-            df['rebalanced_slabs'].notna()]
+            df['rebalanced_slabs'].notna() & (df['rebalance_strategy'] != 'disabled')]
     
     # Set up matplotlib for publication quality
     plt.rcParams.update(rcParams)

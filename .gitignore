@@ -16,6 +16,8 @@ master.log
 nohup.out
 tx.*.json
 
+# Ignore scheduler_state.json files anywhere
+**/scheduler_state.json
 scheduler_state.json
 
 # Python cache files
