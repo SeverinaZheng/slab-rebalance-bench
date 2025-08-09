@@ -3,7 +3,7 @@ import os
 from collections import defaultdict, Counter
 
 # specify the the dir with the current scheduler_state.json file that the master process dumps to
-input_dir = '../master/20250807_191932'
+input_dir = '../master/20250809_131117'
 
 
 with open(f"{input_dir}/scheduler_state.json") as f:
@@ -19,5 +19,27 @@ for entry in data:
 
 print(f"{'Trace Name':<25} {'todo':>6} {'running':>8} {'finished':>9} {'failed':>7}")
 print("-" * 60)
+
+# Calculate totals
+total_todo = 0
+total_running = 0
+total_finished = 0
+total_failed = 0
+
 for trace_name, counts in sorted(summary.items()):
-    print(f"{trace_name:<25} {counts.get('todo',0):>6} {counts.get('running',0):>8} {counts.get('finished',0):>9} {counts.get('failed',0):>7}")
+    todo = counts.get('todo', 0)
+    running = counts.get('running', 0)
+    finished = counts.get('finished', 0)
+    failed = counts.get('failed', 0)
+    
+    print(f"{trace_name:<25} {todo:>6} {running:>8} {finished:>9} {failed:>7}")
+    
+    # Add to totals
+    total_todo += todo
+    total_running += running
+    total_finished += finished
+    total_failed += failed
+
+# Print separator and totals
+print("-" * 60)
+print(f"{'TOTAL':<25} {total_todo:>6} {total_running:>8} {total_finished:>9} {total_failed:>7}")

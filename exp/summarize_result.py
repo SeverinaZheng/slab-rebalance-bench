@@ -468,7 +468,24 @@ def main():
     remapped_df = remapped_df[(remapped_df['tag'].isna()) | (remapped_df['tag'] != 'warm-cold')]
     
     # Drop duplicate rows from processed dataframe
-    remapped_df = remapped_df.drop_duplicates()
+    # Handle unhashable columns (like dictionaries) before dropping duplicates
+    unhashable_cols = []
+    for col in remapped_df.columns:
+        try:
+            # Try to hash a sample of values to see if they're hashable
+            sample_vals = remapped_df[col].dropna().head(5)
+            for val in sample_vals:
+                hash(val)
+        except TypeError:
+            unhashable_cols.append(col)
+
+    if unhashable_cols:
+        print(f"Found unhashable columns: {unhashable_cols}")
+        # Drop duplicates based on hashable columns only
+        hashable_cols = [col for col in remapped_df.columns if col not in unhashable_cols]
+        remapped_df = remapped_df.drop_duplicates(subset=hashable_cols)
+    else:
+        remapped_df = remapped_df.drop_duplicates()
     
     # Step 4: Check and ensure base directories are included
     if 'base_dir' in remapped_df.columns:
@@ -481,13 +498,13 @@ def main():
     os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
     
     # Save both raw and processed results
-    raw_output_file = args.output_file.replace('.csv', '_raw.csv')
+    #raw_output_file = args.output_file.replace('.csv', '_raw.csv')
     processed_output_file = args.output_file.replace('.csv', '_processed.csv')
     
-    raw_df.to_csv(raw_output_file, index=False)
+    #raw_df.to_csv(raw_output_file, index=False)
     remapped_df.to_csv(processed_output_file, index=False)
-    
-    print(f"Raw results saved to: {raw_output_file}")
+
+    #print(f"Raw results saved to: {raw_output_file}")
     print(f"Processed results saved to: {processed_output_file}")
     print(f"Total raw records: {len(raw_df)}")
     print(f"Total processed records: {len(remapped_df)}")

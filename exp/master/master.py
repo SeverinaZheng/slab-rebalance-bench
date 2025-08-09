@@ -681,11 +681,25 @@ def schedule_experiments_reconstructable():
                     eligible_hosts.append((host, mem_free_percent))
             
             if not eligible_hosts:
-                continue
-            
-            # Choose the host with the largest free memory percentage
-            chosen_host = max(eligible_hosts, key=lambda x: x[1])[0]
-            uuid = os.path.basename(exp_dir)
+                # Fallback: if no host meets memory threshold, try hosts with >90% free memory
+                # This helps with tasks that have high memory requirements 
+                fallback_candidates = []
+                for host in candidate_hosts:
+                    mem_free_percent = get_host_mem_free_percent(host)
+                    if mem_free_percent is not None and mem_free_percent > 90.0:
+                        fallback_candidates.append((host, mem_free_percent))
+                
+                if fallback_candidates:
+                    # Choose the host with the highest free memory percentage among those with >90% free
+                    chosen_host = max(fallback_candidates, key=lambda x: x[1])[0]
+                    uuid = os.path.basename(exp_dir)
+                    logging.info(f"Using fallback scheduling for {uuid} to {chosen_host} (using >90% free host)")
+                else:
+                    continue
+            else:
+                # Choose the host with the largest free memory percentage
+                chosen_host = max(eligible_hosts, key=lambda x: x[1])[0]
+                uuid = os.path.basename(exp_dir)
 
             logging.info(f"Dispatching {uuid} to {chosen_host}...")
             

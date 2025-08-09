@@ -1,6 +1,5 @@
 {
     "work_dirs": [
-        "/mnt/cfs/hongshu/slab-rebalance-bench/exp/demo_dir",
         "/mnt/cfs/hongshu/slab-rebalance-bench/exp/work_dir_meta",
         "/mnt/cfs/hongshu/slab-rebalance-bench/exp/work_dir_twitter",
         "/mnt/cfs/hongshu/slab-rebalance-bench/exp/work_dir_cdn"

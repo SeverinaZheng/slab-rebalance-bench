@@ -11,7 +11,7 @@ fi
 USERNAME=$(cat "$SCRIPT_DIR/../hosts/username.txt" | tr -d '\n\r')
 
 # Repository URL
-REPO_URL="https://github.com/hazelnut-99/CacheLib.git"
+REPO_URL="https://github.com/eth-easl/CacheLib.git"
 
 # Read machines from file
 if [[ ! -f "$SCRIPT_DIR/../hosts/hosts.txt" ]]; then

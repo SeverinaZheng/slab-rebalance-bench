@@ -53,9 +53,8 @@ allocators = [
     }  
 ]
 
+trace_names = ['meta_202210_kv', 'meta_202401_kv', 'meta_memcache_2024_kv']
 
-trace_names = ['meta_202210_kv', 'meta_202410_kv', 'meta_memcache_2024_kv'] 
-    
 working_set_ratios = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.4]
 
 rebalance_intervals = [50_000]
