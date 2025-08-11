@@ -8,7 +8,7 @@ time complexity: O(n)
 
 2. Second pass: calculate footprints
    precomputation: 
-   - sort the first access time of each unique object: O(m * logm)
+   - sort the first access time of each unique object: O(m * logm) (p.s. I'm not sure if it's possible to optimize away the log term here)
    - sort the last access time of each unique object: O(m * logm)
    - prefix sum for the reuseTimeHistogram: worst case O(n), could be cheapter though, depends on how many different reuse times there are.
    footprint for each window size:
@@ -17,4 +17,4 @@ time complexity: O(n)
 3. from footprint values to MRC
    O(n)
 
-Total: O(m) + O(n)
+Total: O(m * logm) + O(n)

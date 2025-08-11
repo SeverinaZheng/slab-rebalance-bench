@@ -668,6 +668,7 @@ def schedule_experiments_reconstructable():
             cpu_req = meta["cpu_requirement"]
             mem_req = meta["memory_requirement"]
             
+            eligible_hosts = []
             # First, filter hosts by static resource availability (CPU and memory requirements)
             candidate_hosts = []
             for host in hosts:
@@ -676,36 +677,24 @@ def schedule_experiments_reconstructable():
                 if usage["cpu"] + cpu_req <= node_res["cpu"] and usage["mem"] + mem_req <= node_res["mem"]:
                     candidate_hosts.append(host)
             
-            if not candidate_hosts:
-                continue
-            
-            # Second, check actual memory usage for candidate hosts and find the one with highest free memory
-            eligible_hosts = []
-            for host in candidate_hosts:
-                mem_free_percent = get_host_mem_free_percent(host)
-                if mem_free_percent is not None and mem_free_percent > 15.0:
-                    eligible_hosts.append((host, mem_free_percent))
-            
-            if not eligible_hosts:
-                # Fallback: if no host meets memory threshold, try hosts with >90% free memory
-                # This helps with tasks that have high memory requirements 
-                fallback_candidates = []
+            if candidate_hosts:
                 for host in candidate_hosts:
                     mem_free_percent = get_host_mem_free_percent(host)
-                    if mem_free_percent is not None and mem_free_percent > 90.0:
-                        fallback_candidates.append((host, mem_free_percent))
-                
-                if fallback_candidates:
-                    # Choose the host with the highest free memory percentage among those with >90% free
-                    chosen_host = max(fallback_candidates, key=lambda x: x[1])[0]
-                    uuid = os.path.basename(exp_dir)
-                    logging.info(f"Using fallback scheduling for {uuid} to {chosen_host} (using >90% free host)")
-                else:
-                    continue
+                    if mem_free_percent is not None and mem_free_percent > 15.0:
+                        eligible_hosts.append((host, mem_free_percent))
             else:
-                # Choose the host with the largest free memory percentage
-                chosen_host = max(eligible_hosts, key=lambda x: x[1])[0]
-                uuid = os.path.basename(exp_dir)
+                for i, host in enumerate(hosts):
+                    if i == 0:
+                        continue
+                    mem_free_percent = get_host_mem_free_percent(host)
+                    if mem_free_percent is not None and mem_free_percent >= 90.0:
+                        eligible_hosts.append((host, mem_free_percent))
+            if not eligible_hosts:
+                continue
+            
+            # Choose the host with the largest free memory percentage
+            chosen_host = max(eligible_hosts, key=lambda x: x[1])[0]
+            uuid = os.path.basename(exp_dir)
 
             logging.info(f"Dispatching {uuid} to {chosen_host}...")
             

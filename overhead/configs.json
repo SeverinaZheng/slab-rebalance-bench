@@ -1,0 +1,4 @@
+{
+    "cachelib_path": "/mnt/cfs/hongshu/CacheLib/opt/cachelib/bin/cachebench",
+    "trace_file_path": "/mnt/cfs/hongshu/traces/202206_kv_traces_all.csv.oracleGeneral"
+}
