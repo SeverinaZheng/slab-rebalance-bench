@@ -14,7 +14,7 @@ def create_meta_kv_plot(csv_file, version="complete", trace_name="meta_202210_kv
     
     Args:
         csv_file: Path to the CSV file
-        version: "disabled_only" for first slide, "complete" for second slide, "full_complete" for third slide, "with_tuned" for fourth slide
+        version: "disabled_only" for first slide, "complete" for second slide, "full_complete" for third slide, "with_tuned" for fourth slide, "with_lama" for fifth slide
         trace_name: Name of the trace to plot (meta_202210_kv, meta_202401_kv, or meta_memcache_2024_kv)
         output_dir: Directory to save the output plots (default: current directory)
     """
@@ -27,6 +27,9 @@ def create_meta_kv_plot(csv_file, version="complete", trace_name="meta_202210_kv
         # For slide 4: include marginal-hits-tuned, exclude LAMA
         df = df[(df['trace_name'] == trace_name) & 
                 (df['rebalance_strategy'] != 'lama')]
+    elif version == "with_lama":
+        # For slide 5: include all strategies including LAMA and marginal-hits-tuned
+        df = df[df['trace_name'] == trace_name]
     else:
         # For other slides: exclude both LAMA and marginal-hits-tuned
         df = df[(df['trace_name'] == trace_name) & 
@@ -50,6 +53,9 @@ def create_meta_kv_plot(csv_file, version="complete", trace_name="meta_202210_kv
     elif version == "with_tuned":
         # For slide 4: show all data (no additional filtering)
         pass
+    elif version == "with_lama":
+        # For slide 5: show all data including LAMA (no additional filtering)
+        pass
     # For full_complete version, keep all data (no additional filtering)
     
     # Set up matplotlib for publication quality
@@ -63,6 +69,8 @@ def create_meta_kv_plot(csv_file, version="complete", trace_name="meta_202210_kv
         current_strategy_order = ["disabled"]
     elif version == "with_tuned":
         current_strategy_order = strategy_order
+    elif version == "with_lama":
+        current_strategy_order = strategy_order  # Include all strategies including LAMA
     else:
         # Filter out marginal-hits-tuned for other versions
         current_strategy_order = [s for s in strategy_order if s != "marginal-hits-tuned"]
@@ -191,6 +199,13 @@ def create_meta_kv_plot(csv_file, version="complete", trace_name="meta_202210_kv
                                           bbox_to_anchor=(-0.1, 1.25), loc='center left',
                                           ncol=2, frameon=True, fancybox=True, shadow=True, 
                                           framealpha=0.9, edgecolor='black')
+            elif version == "with_lama":
+                # For slide 5 with 7 strategies, position in center-top with very tight spacing
+                strategy_legend = ax.legend(handles=strategy_legend_elements, 
+                                          title="Rebalancing Strategy",
+                                          bbox_to_anchor=(0.5, 1.40), loc='center',
+                                          ncol=3, columnspacing=0.5, frameon=True, fancybox=True, shadow=True, 
+                                          framealpha=0.9, edgecolor='black')
             else:
                 # For other versions with 5 strategies, use 2 columns
                 strategy_legend = ax.legend(handles=strategy_legend_elements, 
@@ -209,6 +224,13 @@ def create_meta_kv_plot(csv_file, version="complete", trace_name="meta_202210_kv
                                            title="Eviction Policy", 
                                            bbox_to_anchor=(1.1, 1.25), loc='center right',
                                            ncol=1, frameon=True, fancybox=True, shadow=True, 
+                                           framealpha=0.9, edgecolor='black')
+            elif version == "with_lama":
+                # For slide 5: position eviction policy legend below the strategy legend
+                allocator_legend = ax.legend(handles=allocator_legend_elements,
+                                           title="Eviction Policy", 
+                                           bbox_to_anchor=(0.5, 1.25), loc='center',
+                                           ncol=3, frameon=True, fancybox=True, shadow=True, 
                                            framealpha=0.9, edgecolor='black')
             else:
                 # For other versions: use standard positioning
@@ -234,6 +256,9 @@ def create_meta_kv_plot(csv_file, version="complete", trace_name="meta_202210_kv
     # For slide 4: adjust for higher legends like slide 3
     if version == "with_tuned":
         plt.subplots_adjust(top=0.80)
+    elif version == "with_lama":
+        # For slide 5: adjust for stacked legends in center with more space
+        plt.subplots_adjust(top=0.70)
     else:
         # For other slides: standard adjustment for horizontal legends at top
         plt.subplots_adjust(top=0.80)
@@ -246,6 +271,8 @@ def create_meta_kv_plot(csv_file, version="complete", trace_name="meta_202210_kv
         output_file = os.path.join(output_dir, f'meta_kv_{trace_suffix}_slide2.pdf')
     elif version == "with_tuned":
         output_file = os.path.join(output_dir, f'meta_kv_{trace_suffix}_slide4.pdf')
+    elif version == "with_lama":
+        output_file = os.path.join(output_dir, f'meta_kv_{trace_suffix}_slide5.pdf')
     else:  # full_complete
         output_file = os.path.join(output_dir, f'meta_kv_{trace_suffix}_slide3.pdf')
     
@@ -340,7 +367,7 @@ def create_rebalanced_slabs_plot(csv_file, trace_name="meta_202210_kv", output_d
     
     # Customize the plot
     ax.set_xlabel('Cache Size (% of Working Set)')
-    ax.set_ylabel('Number of Slabs Rebalanced')  # Changed y-axis label
+    ax.set_ylabel('Number of Rebalanced Slabs')  # Changed y-axis label
     ax.grid(True, alpha=0.3)
     
     # Set y-axis limits to be consistent
@@ -484,6 +511,9 @@ if __name__ == "__main__":
         
         print(f"Generating version with marginal-hits-tuned (slide 4) for {trace_name}...")
         create_meta_kv_plot(data_path, version="with_tuned", trace_name=trace_name, output_dir=output_dir)
+        
+        print(f"Generating version with LAMA (slide 5) for {trace_name}...")
+        create_meta_kv_plot(data_path, version="with_lama", trace_name=trace_name, output_dir=output_dir)
         
         print(f"Generating rebalanced slabs plot for {trace_name}...")
         create_rebalanced_slabs_plot(data_path, trace_name=trace_name, output_dir=output_dir)

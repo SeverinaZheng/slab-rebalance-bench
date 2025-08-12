@@ -1,6 +1,6 @@
 # Configuration parameters
-result_dir = "work_dir_cycles"
-output_csv_path = "result_cycles.csv"
+result_dir = "cycle_results"
+output_csv_path = "result_digested/result_cycles.csv"
 
 import os
 import json
