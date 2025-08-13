@@ -12,7 +12,7 @@ rx*.json
 worker.log
 result.json
 running.lock
-master.log
+master.log*
 nohup.out
 tx.*.json
 

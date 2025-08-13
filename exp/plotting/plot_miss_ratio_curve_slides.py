@@ -61,8 +61,11 @@ def create_meta_kv_plot(csv_file, version="complete", trace_name="meta_202210_kv
     # Set up matplotlib for publication quality
     plt.rcParams.update(rcParams)
     
-    # Create figure - use consistent size for all slides
-    fig, ax = plt.subplots(figsize=(12, 8))
+    # Create figure - use slightly taller height for slide 5 legends
+    if version == "with_lama":
+        fig, ax = plt.subplots(figsize=(12, 9))
+    else:
+        fig, ax = plt.subplots(figsize=(12, 8))
     
     # Strategy order for consistent legend ordering
     if version == "disabled_only":
@@ -200,11 +203,12 @@ def create_meta_kv_plot(csv_file, version="complete", trace_name="meta_202210_kv
                                           ncol=2, frameon=True, fancybox=True, shadow=True, 
                                           framealpha=0.9, edgecolor='black')
             elif version == "with_lama":
-                # For slide 5 with 7 strategies, position in center-top with very tight spacing
+                # For slide 5 with 7 strategies, use side-by-side layout like slide 4
+                # Position strategy legend on left with 2 columns (4 rows), moved slightly higher
                 strategy_legend = ax.legend(handles=strategy_legend_elements, 
                                           title="Rebalancing Strategy",
-                                          bbox_to_anchor=(0.5, 1.40), loc='center',
-                                          ncol=3, columnspacing=0.5, frameon=True, fancybox=True, shadow=True, 
+                                          bbox_to_anchor=(0.25, 1.35), loc='center',
+                                          ncol=2, frameon=True, fancybox=True, shadow=True, 
                                           framealpha=0.9, edgecolor='black')
             else:
                 # For other versions with 5 strategies, use 2 columns
@@ -226,11 +230,12 @@ def create_meta_kv_plot(csv_file, version="complete", trace_name="meta_202210_kv
                                            ncol=1, frameon=True, fancybox=True, shadow=True, 
                                            framealpha=0.9, edgecolor='black')
             elif version == "with_lama":
-                # For slide 5: position eviction policy legend below the strategy legend
+                # For slide 5: position eviction policy legend on right with smaller spacing
+                # Keep good horizontal spacing, move slightly higher
                 allocator_legend = ax.legend(handles=allocator_legend_elements,
                                            title="Eviction Policy", 
-                                           bbox_to_anchor=(0.5, 1.25), loc='center',
-                                           ncol=3, frameon=True, fancybox=True, shadow=True, 
+                                           bbox_to_anchor=(0.90, 1.35), loc='center',
+                                           ncol=1, labelspacing=1.0, frameon=True, fancybox=True, shadow=True, 
                                            framealpha=0.9, edgecolor='black')
             else:
                 # For other versions: use standard positioning
@@ -451,6 +456,164 @@ def create_rebalanced_slabs_plot(csv_file, trace_name="meta_202210_kv", output_d
     plt.show()
     print(f"Plot saved to: {output_file}")
 
+def create_rebalanced_slabs_all_plot(csv_file, trace_name="meta_202210_kv", output_dir="."):
+    """
+    Create line plot for Meta KV data showing number of rebalanced slabs vs cache size.
+    Uses the same layout as slide 5 (with_lama version) - includes all strategies including LAMA.
+    
+    Args:
+        csv_file: Path to the CSV file
+        trace_name: Name of the trace to plot (meta_202210_kv, meta_202401_kv, or meta_memcache_2024_kv)
+        output_dir: Directory to save the output plots (default: current directory)
+    """
+    
+    # Read the CSV file
+    df = pd.read_csv(csv_file)
+    
+    # Filter for specified trace - include all strategies including LAMA (like slide 5)
+    df = df[df['trace_name'] == trace_name]
+    
+    # Calculate y-axis range from complete dataset
+    y_min = df['n_rebalanced_slabs'].min()
+    y_max = df['n_rebalanced_slabs'].max()
+    y_range = y_max - y_min
+    y_min_padded = max(0, y_min - 0.05 * y_range)
+    y_max_padded = y_max + 0.05 * y_range
+    
+    # Set up matplotlib for publication quality
+    plt.rcParams.update(rcParams)
+    
+    # Create figure - use same size as slide 5
+    fig, ax = plt.subplots(figsize=(12, 9))
+    
+    # Strategy order for consistent legend ordering - include all strategies like slide 5
+    current_strategy_order = strategy_order  # Include all strategies including LAMA
+    
+    # Get unique WSR values and sort them to preserve numerical order
+    unique_wsr = sorted(df['wsr'].unique())
+    wsr_labels = [f"{wsr*100:.1f}" for wsr in unique_wsr]  # Convert to percentage labels
+    x_positions = range(len(unique_wsr))  # Categorical positions
+    
+    # Plot lines for each strategy-allocator combination
+    for strategy in current_strategy_order:
+        if strategy not in df['rebalance_strategy'].values:
+            continue
+            
+        for allocator in allocator_order:
+            if allocator not in df['allocator'].values:
+                continue
+                
+            # Filter data for this strategy-allocator combination
+            subset = df[(df['rebalance_strategy'] == strategy) & (df['allocator'] == allocator)]
+            
+            if subset.empty:
+                continue
+            
+            # Sort by WSR for proper line connection
+            subset = subset.sort_values('wsr')
+            
+            # Map WSR values to categorical positions
+            x_values = [x_positions[unique_wsr.index(wsr)] for wsr in subset['wsr']]
+            y_values = subset['n_rebalanced_slabs']
+            
+            # Use standard marker and linestyle for all strategies
+            marker = allocator_markers[allocator]
+            linestyle = allocator_linestyles[allocator]
+            
+            # Plot line with markers
+            ax.plot(x_values, y_values, 
+                   color=strategy_colors[strategy],
+                   marker=marker,
+                   linestyle=linestyle,
+                   linewidth=2.5,
+                   markersize=8,
+                   markeredgecolor='black',
+                   markeredgewidth=0.8,
+                   label=f"{strategy_labels[strategy]} + {allocator_labels[allocator_order.index(allocator)]}")
+    
+    # Customize the plot
+    ax.set_xlabel('Cache Size (% of Working Set)')
+    ax.set_ylabel('Number of Rebalanced Slabs')
+    ax.grid(True, alpha=0.3)
+    
+    # Set y-axis limits
+    ax.set_ylim(y_min_padded, y_max_padded)
+    
+    # Set categorical x-axis with proper labels
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(wsr_labels)
+    
+    # Create legend elements - same as slide 5
+    # Strategy legend
+    strategy_legend_elements = []
+    strategies_in_data = set(df['rebalance_strategy'].unique())
+    
+    for strategy in current_strategy_order:
+        if strategy in strategies_in_data:
+            strategy_legend_elements.append(plt.Line2D([0], [0], 
+                                           color=strategy_colors[strategy], 
+                                           linewidth=3,
+                                           label=strategy_labels[strategy]))
+    
+    # Allocator legend  
+    allocator_legend_elements = []
+    allocators_in_data = set(df['allocator'].unique())
+    
+    for allocator in allocator_order:
+        if allocator in allocators_in_data:
+            allocator_legend_elements.append(plt.Line2D([0], [0], 
+                                            color='black',
+                                            marker=allocator_markers[allocator],
+                                            linestyle=allocator_linestyles[allocator],
+                                            linewidth=2,
+                                            markersize=8,
+                                            markeredgecolor='black',
+                                            markeredgewidth=0.8,
+                                            label=allocator_labels[allocator_order.index(allocator)]))
+    
+    # Create legends using same layout as slide 5 (with_lama)
+    # Add strategy legend (left side)
+    if strategy_legend_elements:
+        strategy_legend = ax.legend(handles=strategy_legend_elements, 
+                                  title="Rebalancing Strategy",
+                                  bbox_to_anchor=(0.25, 1.35), loc='center',
+                                  ncol=2, frameon=True, fancybox=True, shadow=True, 
+                                  framealpha=0.9, edgecolor='black')
+        strategy_legend.get_frame().set_facecolor('white')
+        strategy_legend.set_title("Rebalancing Strategy", prop={'size': 22, 'weight': 'bold'})
+    
+    # Add allocator legend (right side)
+    if allocator_legend_elements:
+        allocator_legend = ax.legend(handles=allocator_legend_elements,
+                                   title="Eviction Policy", 
+                                   bbox_to_anchor=(0.90, 1.35), loc='center',
+                                   ncol=1, labelspacing=1.0, frameon=True, fancybox=True, shadow=True, 
+                                   framealpha=0.9, edgecolor='black')
+        allocator_legend.get_frame().set_facecolor('white')
+        allocator_legend.set_title("Eviction Policy", prop={'size': 22, 'weight': 'bold'})
+        # Add the strategy legend back as an artist so both show
+        if strategy_legend_elements:
+            ax.add_artist(strategy_legend)
+    
+    # Style the plot
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_linewidth(1.2)
+    ax.spines['bottom'].set_linewidth(1.2)
+    
+    # Adjust layout to accommodate legends - same as slide 5
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.70)
+    
+    # Save to PDF
+    trace_suffix = trace_name.replace('meta_', '').replace('_kv', '')
+    output_file = os.path.join(output_dir, f'meta_kv_{trace_suffix}_rebalanced_slabs_all.pdf')
+    plt.savefig(output_file, format='pdf', dpi=300, bbox_inches='tight',
+               facecolor='white', edgecolor='none')
+    
+    plt.show()
+    print(f"Plot saved to: {output_file}")
+
 # Example usage
 if __name__ == "__main__":
     # Configuration
@@ -520,3 +683,6 @@ if __name__ == "__main__":
         
         print(f"Generating rebalanced slabs plot with tuned for {trace_name}...")
         create_rebalanced_slabs_plot(data_path, trace_name=trace_name, output_dir=output_dir, include_tuned=True)
+        
+        print(f"Generating rebalanced slabs plot with all strategies (slide 5 layout) for {trace_name}...")
+        create_rebalanced_slabs_all_plot(data_path, trace_name=trace_name, output_dir=output_dir)
