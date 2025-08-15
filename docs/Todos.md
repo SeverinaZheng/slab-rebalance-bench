@@ -1,0 +1,3 @@
+- configuration file fields
+- result schema
+- write comment to marginal-hits-tuned code
