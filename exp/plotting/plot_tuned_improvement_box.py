@@ -10,7 +10,7 @@ import numpy as np
 import os
 from const import (allocator_order, allocator_labels, rcParams)
 
-def plot_tuned_improvement(df, output_dir):
+def plot_tuned_improvement(df, output_dir, ratio=False):
     """
     Plot boxplots showing miss ratio improvement from marginal-hits to marginal-hits-tuned.
     Creates separate PDF files for each WSR value.
@@ -18,22 +18,27 @@ def plot_tuned_improvement(df, output_dir):
     Args:
         df: DataFrame with columns including 'allocator', 'wsr', 'tuned_improvement'
         output_dir: Directory to save the plots
+        ratio (bool): If True, use tuned_percent_improvement instead of tuned_improvement. Default False.
     """
     
     # Filter Twitter production data and remove NaN values from tuned_improvement
     df = df[(df['trace_name'].str.startswith('twitter_cluster')) & (df['tag'] != 'warm-cold')]
-    df = df.dropna(subset=['tuned_improvement'])  # Remove rows where tuned_improvement is NaN
+    
+    # Choose the appropriate column based on ratio parameter
+    metric_column = 'tuned_percent_improvement' if ratio else 'tuned_improvement'
+    
+    df = df.dropna(subset=[metric_column])  # Remove rows where the metric is NaN
     
     # Debug: Print data info
     print(f"Total filtered data points: {len(df)}")
     print(f"Available columns: {df.columns.tolist()}")
     print(f"Unique WSR values: {df['wsr'].unique() if 'wsr' in df.columns else 'WSR column not found'}")
     print(f"Unique allocators: {df['allocator'].unique() if 'allocator' in df.columns else 'allocator column not found'}")
-    if 'tuned_improvement' in df.columns:
-        print(f"tuned_improvement range: {df['tuned_improvement'].min()} to {df['tuned_improvement'].max()}")
-        print(f"Non-null tuned_improvement values: {df['tuned_improvement'].notna().sum()}")
+    if metric_column in df.columns:
+        print(f"{metric_column} range: {df[metric_column].min()} to {df[metric_column].max()}")
+        print(f"Non-null {metric_column} values: {df[metric_column].notna().sum()}")
     else:
-        print("tuned_improvement column not found")
+        print(f"{metric_column} column not found")
     
     # Set up the plotting style for publication quality
     plt.rcParams.update(rcParams)
@@ -56,7 +61,7 @@ def plot_tuned_improvement(df, output_dir):
         for j, allocator in enumerate(allocator_order):
             allocator_data = df_wsr[df_wsr['allocator'] == allocator]
             if len(allocator_data) > 0:
-                data = allocator_data['tuned_improvement'].values
+                data = allocator_data[metric_column].values
                 # Double-check for NaN values
                 data = data[~np.isnan(data)]
                 if len(data) > 0:
@@ -96,7 +101,8 @@ def plot_tuned_improvement(df, output_dir):
         plt.tight_layout()
         
         # Save individual plot
-        output_path = os.path.join(output_dir, f'twitter_prod_tuned_improvement_wsr_{wsr}.pdf')
+        suffix = "_percent" if ratio else ""
+        output_path = os.path.join(output_dir, f'twitter_prod_tuned_improvement_wsr_{wsr}{suffix}.pdf')
         plt.savefig(output_path, format='pdf', dpi=300, bbox_inches='tight')
         plt.show()
         
@@ -112,4 +118,5 @@ if __name__ == "__main__":
     os.makedirs(output_dir, exist_ok=True)
     
     # Create the plot
-    plot_tuned_improvement(df, output_dir)
+    plot_tuned_improvement(df, output_dir, ratio=False)
+    plot_tuned_improvement(df, output_dir, ratio=True)

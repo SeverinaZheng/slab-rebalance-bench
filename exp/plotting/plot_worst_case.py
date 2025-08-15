@@ -5,13 +5,15 @@ import os
 from const import (strategy_order, strategy_labels, strategy_colors, 
                    allocator_order, allocator_labels, rcParams)
 
-def create_twitter_prod_worst_case_mr_barplots(csv_file, output_dir=None):
+def create_twitter_prod_worst_case_mr_barplots(csv_file, output_dir=None, ratio=False):
     """
     Create bar plots for Twitter production data showing worst-case miss ratio reduction from disabled.
     
     Args:
         csv_file (str): Path to the CSV file containing the data
         output_dir (str): Directory to save output plots. If None, uses current directory.
+        ratio (bool): If True, use miss_ratio_percent_reduction_from_disabled instead 
+                     of miss_ratio_reduction_from_disabled. Default False.
     """
     
     # Set output directory
@@ -22,7 +24,11 @@ def create_twitter_prod_worst_case_mr_barplots(csv_file, output_dir=None):
     
     # Read the CSV file
     df = pd.read_csv(csv_file)
-    df = df[(df['trace_name'].str.startswith('twitter')) & (df['tag'] != 'warm-cold') & df['miss_ratio_reduction_from_disabled'].notna()]
+    
+    # Choose the appropriate column based on ratio parameter
+    metric_column = 'miss_ratio_percent_reduction_from_disabled' if ratio else 'miss_ratio_reduction_from_disabled'
+    
+    df = df[(df['trace_name'].str.startswith('twitter')) & (df['tag'] != 'warm-cold') & df[metric_column].notna()]
     df = df[df['rebalance_strategy'] != 'disabled']
     
     # Set up matplotlib for publication quality
@@ -72,7 +78,7 @@ def create_twitter_prod_worst_case_mr_barplots(csv_file, output_dir=None):
                 strategy_data = allocator_data[allocator_data['rebalance_strategy'] == strategy]
                 
                 if not strategy_data.empty:
-                    values = strategy_data['miss_ratio_reduction_from_disabled'].values
+                    values = strategy_data[metric_column].values
                     
                     # Check for NaN values
                     if np.any(np.isnan(values)):
@@ -173,7 +179,8 @@ def create_twitter_prod_worst_case_mr_barplots(csv_file, output_dir=None):
         plt.subplots_adjust(top=0.85)  # Make room for legend at top
         
         # Save to PDF in the specified output directory
-        output_file = os.path.join(output_dir, f'twitter_prod_worst_case_mr_reduction_disabled_wsr_{wsr:.2f}.pdf')
+        suffix = "_percent" if ratio else ""
+        output_file = os.path.join(output_dir, f'twitter_prod_worst_case_mr_reduction_disabled_wsr_{wsr:.2f}{suffix}.pdf')
         plt.savefig(output_file, format='pdf', dpi=300, bbox_inches='tight',
                    facecolor='white', edgecolor='none')
         
@@ -184,4 +191,5 @@ def create_twitter_prod_worst_case_mr_barplots(csv_file, output_dir=None):
 if __name__ == "__main__":
     csv_file = "../result/efficiency_result_processed.csv"
     output_dir = "figures/twitter_worst_case"
-    create_twitter_prod_worst_case_mr_barplots(csv_file, output_dir)
+    create_twitter_prod_worst_case_mr_barplots(csv_file, output_dir, ratio=False)
+    create_twitter_prod_worst_case_mr_barplots(csv_file, output_dir, ratio=True)

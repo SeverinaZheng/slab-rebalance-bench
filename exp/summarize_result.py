@@ -367,6 +367,7 @@ def add_miss_ratio_reduction_from_disabled(df):
     df = df.copy()
     df = df.sort_values(["trace_name", "wsr", "allocator"])
     reduction_series = pd.Series(np.nan, index=df.index)
+    percent_reduction_series = pd.Series(np.nan, index=df.index)
 
     group_cols = ["trace_name", "wsr", "allocator"]
     for _, group in df.groupby(group_cols):
@@ -376,10 +377,20 @@ def add_miss_ratio_reduction_from_disabled(df):
         else:
             baseline_miss = baseline.iloc[0]["miss_ratio"]
         for idx, row in group.iterrows():
-            reduction = baseline_miss - row["miss_ratio"] if pd.notnull(baseline_miss) and pd.notnull(row["miss_ratio"]) else np.nan
-            reduction_series.at[idx] = reduction
+            if pd.notnull(baseline_miss) and pd.notnull(row["miss_ratio"]):
+                reduction = baseline_miss - row["miss_ratio"]
+                reduction_series.at[idx] = reduction
+                # Calculate percent reduction (delta / baseline * 100)
+                if baseline_miss != 0:
+                    percent_reduction_series.at[idx] = (reduction / baseline_miss) 
+                else:
+                    percent_reduction_series.at[idx] = np.nan
+            else:
+                reduction_series.at[idx] = np.nan
+                percent_reduction_series.at[idx] = np.nan
 
     df["miss_ratio_reduction_from_disabled"] = reduction_series
+    df["miss_ratio_percent_reduction_from_disabled"] = percent_reduction_series
     return df
 
 
@@ -387,9 +398,11 @@ def add_miss_ratio_reduction_from_lru_disabled(df):
     """
     For each group of (trace_name, wsr), use the row with allocator=='LRU' and rebalance_strategy=='disabled' as baseline.
     For each row in the group, compute miss_ratio_reduction_from_lru_disabled = baseline_miss_ratio - row['miss_ratio'].
+    Also compute the percent reduction = (reduction / baseline) * 100.
     """
     df = df.copy()
     reduction_series = pd.Series(np.nan, index=df.index)
+    percent_reduction_series = pd.Series(np.nan, index=df.index)
     group_cols = ["trace_name", "wsr"]
 
     # Build a lookup for baseline miss_ratio
@@ -403,11 +416,19 @@ def add_miss_ratio_reduction_from_lru_disabled(df):
         key = (row["trace_name"], row["wsr"])
         baseline_miss = baseline_lookup.get(key, np.nan)
         if pd.notnull(baseline_miss) and pd.notnull(row["miss_ratio"]):
-            reduction_series.at[idx] = baseline_miss - row["miss_ratio"]
+            reduction = baseline_miss - row["miss_ratio"]
+            reduction_series.at[idx] = reduction
+            # Calculate percent reduction (delta / baseline * 100)
+            if baseline_miss != 0:
+                percent_reduction_series.at[idx] = (reduction / baseline_miss) 
+            else:
+                percent_reduction_series.at[idx] = np.nan
         else:
             reduction_series.at[idx] = np.nan
+            percent_reduction_series.at[idx] = np.nan
 
     df["miss_ratio_reduction_from_lru_disabled"] = reduction_series
+    df["miss_ratio_percent_reduction_from_lru_disabled"] = percent_reduction_series
     return df
 
 
@@ -420,17 +441,27 @@ def add_tuned_improvement(df):
     )["miss_ratio"]
 
     improvements = pd.Series(np.nan, index=df.index)
+    percent_improvements = pd.Series(np.nan, index=df.index)
+    
     for idx, row in df[mask].iterrows():
         key = (row["trace_name"], row["wsr"], row["allocator"], row["tag"], row["monitor_interval"])
         base = lookup.get(key, np.nan)
         if isinstance(base, pd.Series):
             base = base.iloc[0]
         if pd.notnull(base) and pd.notnull(row["miss_ratio"]):
-            improvements.at[idx] = base - row["miss_ratio"]
+            improvement = base - row["miss_ratio"]
+            improvements.at[idx] = improvement
+            # Calculate percent improvement (delta / baseline * 100)
+            if base != 0:
+                percent_improvements.at[idx] = (improvement / base) 
+            else:
+                percent_improvements.at[idx] = np.nan
         else:
             improvements.at[idx] = np.nan
+            percent_improvements.at[idx] = np.nan
 
     df["tuned_improvement"] = improvements
+    df["tuned_percent_improvement"] = percent_improvements
     return df
 
 
