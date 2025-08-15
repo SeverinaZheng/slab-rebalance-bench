@@ -126,3 +126,26 @@ g++ -shared -fPIC -o libmock_time.so libmock_time.cpp -ldl
 
 Most modifications to CacheBench are to support reading binary formatted trace files, and we added many different knobs (as I made too many changes along the way, some of the knobs are no longer meaningful).
 
+## Testing CacheLib with Trace Replay
+
+Once you have successfully built CacheLib, you can test it by replaying a trace file. Follow these steps:
+
+### Step 1: Download a Trace File
+
+Download a sample trace file:
+```bash
+wget https://ftp.pdl.cmu.edu/pub/datasets/twemcacheWorkload/cacheDatasets/metaKV/202210_kv_traces_all_sort.csv.oracleGeneral.zst
+```
+
+### Step 2: Prepare Configuration File
+
+Copy the `config.json` file from this directory to your machine. Make sure to update the `traceFileName` field in the configuration file to point to the location where you downloaded the trace file.
+
+### Step 3: Run CacheBench
+
+Execute CacheBench with the trace replay:
+```bash
+LD_PRELOAD=libmock_time.so opt/cachelib/bin/cachebench --json_test_config config.json --progress=100000
+```
+
+**Note:** Make sure to replace the paths with the correct locations of your `libmock_time.so` library and `config.json` file. 
