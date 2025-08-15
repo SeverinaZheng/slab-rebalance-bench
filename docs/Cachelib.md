@@ -153,3 +153,8 @@ LD_PRELOAD=libmock_time.so opt/cachelib/bin/cachebench --json_test_config config
 
 
 ## rebuild
+```bash
+cd into build-cachelib/
+sudo make -j 
+sudo make install
+```
