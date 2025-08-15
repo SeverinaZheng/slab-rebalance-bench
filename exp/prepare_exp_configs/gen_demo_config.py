@@ -56,7 +56,7 @@ allocators = [
 
 trace_names = ['meta_202210_kv'] 
     
-working_set_ratios = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.4]
+working_set_ratios = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2]
 
 rebalance_intervals = [50_000]
 placeholder_interval = 50_000
