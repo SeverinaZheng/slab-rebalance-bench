@@ -55,8 +55,7 @@ allocators = [
 
 
 trace_names = ['wiki_2016u', 'wiki_2019t', 'wiki_2019u', 
-               'meta_reag', 'meta_rnha', 'meta_rprn', 
-               'tencent_photo1', 'tencent_photo2'] 
+               'meta_reag', 'meta_rnha', 'meta_rprn'] 
     
 working_set_ratios = [0.01]
 
