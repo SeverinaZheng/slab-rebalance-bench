@@ -95,7 +95,7 @@ cache_configs = {
 }
 
 # Global work directory configuration
-WORK_DIR = f"../demo_dir"
+WORK_DIR = f"../work_dir_demo"
 
 
 

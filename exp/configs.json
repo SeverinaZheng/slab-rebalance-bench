@@ -1,11 +1,9 @@
 {
     "work_dirs": [
-        "/mnt/cfs/hongshu/slab-rebalance-bench/exp/work_dir_meta",
-        "/mnt/cfs/hongshu/slab-rebalance-bench/exp/work_dir_twitter",
-        "/mnt/cfs/hongshu/slab-rebalance-bench/exp/work_dir_cdn"
+        "/mnt/cfs/hongshu/slab-rebalance-bench/exp/work_dir_demo"
     ],
-    "need_download_traces": false,
-    "local_trace_file_dir": "/mntData2/data/oracleReuse",
+    "need_download_traces": true,
+    "local_trace_file_dir": "/nfs/hongshu/traces",
     "wget_trace_path": "https://ftp.pdl.cmu.edu/pub/datasets/twemcacheWorkload/cacheDatasets",
     "python_path": "python3"
 }
