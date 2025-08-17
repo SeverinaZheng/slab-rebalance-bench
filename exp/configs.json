@@ -1,6 +1,6 @@
 {
     "work_dirs": [
-        "/mnt/cfs/hongshu/slab-rebalance-bench/exp/work_dir_demo"
+        "/nfs/hongshu/slab-rebalance-bench/exp/work_dir_demo"
     ],
     "need_download_traces": true,
     "local_trace_file_dir": "/nfs/hongshu/traces",

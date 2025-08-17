@@ -1,17 +1,4 @@
-clnode307.clemson.cloudlab.us
-clnode301.clemson.cloudlab.us
-clnode314.clemson.cloudlab.us
-clnode285.clemson.cloudlab.us
-clnode297.clemson.cloudlab.us
-clnode288.clemson.cloudlab.us
-clnode304.clemson.cloudlab.us
-clnode305.clemson.cloudlab.us
-clnode295.clemson.cloudlab.us
-clnode293.clemson.cloudlab.us
-clnode287.clemson.cloudlab.us
-clnode308.clemson.cloudlab.us
-clnode289.clemson.cloudlab.us
-clnode296.clemson.cloudlab.us
-clnode299.clemson.cloudlab.us
-clnode300.clemson.cloudlab.us
+clnode136.clemson.cloudlab.us
+clnode133.clemson.cloudlab.us
+clnode321.clemson.cloudlab.us
 
