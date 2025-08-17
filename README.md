@@ -61,5 +61,6 @@ A detailed version is in [here](https://github.com/eth-easl/slab-rebalance-bench
 ```bash
 python exp/plotting/plot_demo_figure.py exp/master/20250816_152551/result_processed.csv meta_202210_kv
 ```
-replace 20250816_152551 with your timestamp-name directory
+Remember to replace 20250816_152551 with your timestamp-name directory
+Then two figures same as meta_kv_2022210.pdf and meta_kv_202210_rebalanced_slabs.pdf will be generated.
 
