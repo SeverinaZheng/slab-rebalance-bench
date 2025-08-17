@@ -1,5 +1,5 @@
 
-# Raw Results and Synthetic Traces
+# Raw Results and Trace Files
 
 ## Raw Results
 
@@ -10,6 +10,7 @@ The raw miss ratio results for [efficiency_result_processed.csv](https://github.
 
 ### CPU Cycle Results
 The raw CPU cycle results are already in this repository under `overhead/cycle_result`.
+The processed result is under overhead/result_digested/meta_2022_overhead.csv
 
 ## Synthetic Traces
 
@@ -20,3 +21,6 @@ We've been using several synthetic traces:
 - **synth_dynamic_400**: 5 classes with different Zipf skew, 2-phase
 
 These traces are generated using the `tools/create_synthetic_trace` utilities.
+
+## An additional memcache trace from Meta
+This isn't maintained in the ftp server yet, so I've uploaded it to the Google Drive.

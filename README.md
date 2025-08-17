@@ -50,9 +50,16 @@ A detailed version is in [here](https://github.com/eth-easl/slab-rebalance-bench
    ```
 
 7. **Monitor progress:**
-   After launching `master.py`, a timestamp-named directory will be created containing:
+   After launching `master.py`, a timestamp-named directory (e.g. 20250810_135652) will be created containing:
    - `master.log`: detailed logs of scheduling and job execution
    - `scheduler_state.json`: current state of all experiments
-   - `result.csv`: final summary report (generated when all experiments finish)
+   - `result_processed.csv`: final summary report (generated when all experiments finish)
    
    The `master.log` file provides real-time updates on progress, running jobs, and resource utilization of each host.
+
+8. **Visualizing the result:**
+```bash
+python exp/plotting/plot_demo_figure.py exp/master/20250816_152551/result_processed.csv meta_202210_kv
+```
+replace 20250816_152551 with your timestamp-name directory
+

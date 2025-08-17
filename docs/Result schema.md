@@ -5,6 +5,7 @@ The miss ratio benchmarking results are available at: [efficiency_result_process
 ## Configuration Fields
 
 - **trace_name**: Name of trace (e.g., `twitter_cluster25`, `meta_202210_kv`)
+- **category**: Category of the trace, e.g. meta-kv, meta-cdn, twitter-kv, wiki-cdn
 - **wsr**: Working set ratio
 - **slab_size**: 1 or 4 MB
 - **slab_cnt**: Total memory in units of slabs
