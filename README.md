@@ -41,7 +41,7 @@ A detailed version is in [here](https://github.com/eth-easl/slab-rebalance-bench
 
 5. **Configure host list for master:**
    - cd into `slab-rebalance-bench/exp/master`
-   - Edit `hosts.txt` to include your host list (first host will be the master node)
+   - Edit `hosts.txt` to include your host list (first host will be the master node) 
 
 6. **Launch the master process:**
    ```bash
