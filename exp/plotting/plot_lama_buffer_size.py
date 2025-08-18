@@ -6,13 +6,13 @@ import os
 
 # Set publication-quality matplotlib parameters
 plt.rcParams.update({
-    'font.size': 20,
-    'axes.labelsize': 22,
-    'axes.titlesize': 24,
-    'xtick.labelsize': 18,
-    'ytick.labelsize': 18,
-    'legend.fontsize': 18,
-    'figure.titlesize': 26,
+    'font.size': 22,
+    'axes.labelsize': 26,
+    'axes.titlesize': 28,
+    'xtick.labelsize': 22,
+    'ytick.labelsize': 22,
+    'legend.fontsize': 22,
+    'figure.titlesize': 30,
     'lines.linewidth': 2.5,
     'lines.markersize': 8,
     'figure.figsize': (12, 8),
@@ -29,7 +29,7 @@ plt.rcParams.update({
     'legend.framealpha': 0.9
 })
 
-def plot_lama_analysis(trace_name, csv_path='../data/end-to-end/report_lama_detailed_processed.csv', output_dir='.'):
+def plot_lama_analysis(trace_name, csv_path='../data/end-to-end/report_lama_detailed_processed.csv', output_dir='.', categorical_x=False):
     """
     Plot LAMA analysis comparing marginal-hits-tuned and lama strategies
     with different footprintBufferSize configurations.
@@ -38,6 +38,7 @@ def plot_lama_analysis(trace_name, csv_path='../data/end-to-end/report_lama_deta
         trace_name: Name of the trace to analyze (e.g., 'meta_202210_kv')
         csv_path: Path to the CSV file containing the data
         output_dir: Directory to save the plots
+        categorical_x: If True, treat x-axis as categorical with numeric ordering (default: False)
     """
     
     # Read the data
@@ -150,6 +151,19 @@ def plot_lama_analysis(trace_name, csv_path='../data/end-to-end/report_lama_deta
     # Plot each strategy
     print(f"Plotting {len(unique_strategies)} strategies with complete WSR coverage")
     
+    # Get unique WSR values and sort them for categorical x-axis
+    unique_wsr_values = sorted(filtered_df['wsr_percentage'].unique())
+    wsr_labels = [f"{wsr:.1f}" for wsr in unique_wsr_values]
+    
+    if categorical_x:
+        # Use categorical positions for x-axis
+        x_positions = range(len(unique_wsr_values))
+        wsr_to_position = {wsr: pos for pos, wsr in enumerate(unique_wsr_values)}
+    else:
+        # Use actual WSR values for x-axis (continuous)
+        x_positions = unique_wsr_values
+        wsr_to_position = {wsr: wsr for wsr in unique_wsr_values}
+    
     for i, strategy in enumerate(unique_strategies):
         strategy_data = filtered_df[filtered_df['strategy_label'] == strategy]
         
@@ -170,7 +184,10 @@ def plot_lama_analysis(trace_name, csv_path='../data/end-to-end/report_lama_deta
                 'marker': default_markers[i % len(default_markers)]
             }
         
-        ax.plot(strategy_data['wsr_percentage'], 
+        # Map WSR values to x-axis positions
+        x_values = [wsr_to_position[wsr] for wsr in strategy_data['wsr_percentage']]
+        
+        ax.plot(x_values, 
                 strategy_data['miss_ratio'],
                 marker=style['marker'], 
                 linestyle=style['linestyle'],
@@ -184,6 +201,15 @@ def plot_lama_analysis(trace_name, csv_path='../data/end-to-end/report_lama_deta
     ax.set_ylabel('Miss Ratio')
     # ax.set_title(f'LAMA Analysis: {trace_name}')  # No title for publication plots
     
+    # Set x-axis ticks and labels
+    if categorical_x:
+        # Set categorical x-axis with proper labels
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels(wsr_labels)
+    else:
+        # For continuous x-axis, matplotlib will handle ticks automatically
+        pass
+    
     # Add grid
     ax.grid(True, alpha=0.3)
     
@@ -194,7 +220,10 @@ def plot_lama_analysis(trace_name, csv_path='../data/end-to-end/report_lama_deta
     plt.tight_layout()
     
     # Save the plot
-    output_file = os.path.join(output_dir, f'lama_analysis_{trace_name}.pdf')
+    if categorical_x:
+        output_file = os.path.join(output_dir, f'lama_analysis_{trace_name}_categorical.pdf')
+    else:
+        output_file = os.path.join(output_dir, f'lama_analysis_{trace_name}.pdf')
     plt.savefig(output_file, dpi=300, bbox_inches='tight')
     print(f"Plot saved to {output_file}")
     
@@ -214,6 +243,7 @@ if __name__ == "__main__":
     # Configuration
     csv_path = '../result/lama_buffer_size.csv'
     output_dir = 'figures/lama_buffer_analysis'
+    categorical_x = False  # Set to True to use categorical x-axis
     
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
@@ -222,4 +252,6 @@ if __name__ == "__main__":
     traces = ['meta_202210_kv', 'meta_202401_kv', 'meta_memcache_2024_kv', 'twitter_cluster53']
     
     for trace in traces:
-        plot_lama_analysis(trace, csv_path, output_dir)
+        print(f"Plotting trace: {trace}")
+        plot_lama_analysis(trace, csv_path, output_dir, categorical_x)
+        plot_lama_analysis(trace, csv_path, output_dir, True)
