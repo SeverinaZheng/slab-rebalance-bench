@@ -167,7 +167,8 @@ def compute_optimal_allocation(
     alloc_sizes=None,
     min_alloc_size=None,
     max_alloc_size=None,
-    alloc_factor=None
+    alloc_factor=None,
+    max_num_records=None
 ):
     """
     Compute optimal slab allocation for a given trace.
@@ -250,8 +251,8 @@ def compute_optimal_allocation(
             decompressor = ZstdDecompressor()
             reader = decompressor.stream_reader(binary_file)
 
-        
-            while True:  # For testing, limit to first 80M records
+
+            while record_count < max_num_records:  # For testing, limit to first 80M records
                 parsed = parse_binary_record(reader)
                 if parsed is None:
                     break  # End of file
@@ -349,12 +350,12 @@ def compute_optimal_allocation(
                 # Save MRC to individual file
                 with open(mrc_file_path, 'w', newline='') as csvfile:
                     writer = csv.writer(csvfile)
-                    writer.writerow(['alloc_size', 'cache_size', 'slab_cnt', 'miss_count', 'miss_ratio', 'miss_ratio_delta'])
+                    writer.writerow(['alloc_size', 'cache_size', 'slab_cnt', 'miss_count', 'miss_ratio', 'miss_ratio_delta']);
                     
                     last_miss_ratio = 1.0
                     for memory_size in memory_sizes:
                         slab_cnt = memory_size // slab_size_bytes
-                        max_objects = memory_size // alloc_size
+                        max_objects = memory_size // alloc_size;
                         
                         miss_count = sum(
                             count for reuse_distance, count in histogram.items() 
@@ -370,9 +371,9 @@ def compute_optimal_allocation(
                             'miss_ratio': miss_ratio,
                             'miss_ratio_delta': miss_ratio_delta
                         }
-                        mrc.append(mrc_point)
+                        mrc.append(mrc_point);
                         
-                        writer.writerow([alloc_size, memory_size, slab_cnt, miss_count, miss_ratio, miss_ratio_delta])
+                        writer.writerow([alloc_size, memory_size, slab_cnt, miss_count, miss_ratio, miss_ratio_delta]);
                         last_miss_ratio = miss_ratio
                 
                 mrcs[alloc_size] = mrc
@@ -449,6 +450,19 @@ def compute_optimal_allocation(
             float_format='%.6f'
         )
         print(f"DP optimal allocations DataFrame saved to: {optimal_allocations_dp_csv_path}")
+
+        # Save the how many records were processed(max_num_records) and the slab allocation for each class
+        timeline_csv_path = os.path.join(result_dir, f"{trace_name}_optimal_allocation_timelined.csv")
+        df = optimal_allocation_dp['optimal_allocations_df']
+        last_row = df.iloc[-1]
+        file_exists = os.path.exists(timeline_csv_path)
+        with open(timeline_csv_path, 'a', newline='') as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(['max_num_records'] + alloc_sizes)
+            row = [max_num_records] + [int(last_row[alloc_size]) if alloc_size in last_row else '0' for alloc_size in alloc_sizes]
+            writer.writerow(row)
+        print(f"how many records were processed(max_num_records) and the slab allocation for each class file saved/appended to: {timeline_csv_path}")
     
     # Save greedy results
     if optimal_allocation_greedy and 'optimal_allocations_df' in optimal_allocation_greedy:
@@ -477,18 +491,20 @@ def compute_optimal_allocation(
             print(f"Greedy/DP ratio: {ratio:.6f} ({((ratio-1)*100):+.2f}%)")
 
 def main():
-    compute_optimal_allocation(
-        trace_file_path='/nfs/traces/twitter_cluster11.oracleGeneral.zst',
-        max_total_slabs=4096,
-        result_path=None,
-        is_binary_compressed=True,
-        tmp_work_dir='/nfs/tmp',
-        slab_size=4,
-        alloc_sizes=[256, 512, 1024, 2048, 4096],
-        min_alloc_size=None,
-        max_alloc_size=None,
-        alloc_factor=None
-    )
+    for num_records in range(500000, 12000001, 500000):
+        compute_optimal_allocation(
+            trace_file_path='/nfs/traces/twitter_cluster11.oracleGeneral.zst',
+            max_total_slabs=54,
+            result_path=None,
+            is_binary_compressed=True,
+            tmp_work_dir='/nfs/tmp',
+            slab_size=4,
+            alloc_sizes=[76, 95, 119,149,187,234, 293, 367, 512, 1024],
+            min_alloc_size=None,
+            max_alloc_size=None,
+            alloc_factor=None,
+            max_num_records=num_records
+        )
 
 
 if __name__ == "__main__":
