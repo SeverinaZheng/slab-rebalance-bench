@@ -191,6 +191,7 @@ def create_twitter_prod_boxplots(csv_file, output_dir=None, need_all_strategy=Fa
         # Customize the plot
         ax.set_xlabel('Eviction Policy')
         ax.set_ylabel('Number of Rebalanced Slabs')
+        ax.set_yscale('log')  # Set y axis to log scale
         ax.grid(True, alpha=0.3, axis='y')
         
         # Create legend with matching saturation (alpha=1)
@@ -206,13 +207,13 @@ def create_twitter_prod_boxplots(csv_file, output_dir=None, need_all_strategy=Fa
                                      alpha=1, edgecolor='black',  # Match box alpha
                                      label=strategy_labels[strategy]))
         
-        if legend_elements:
-            # Create legend with 2 rows, 3 columns outside the plot area at the top
-            legend = ax.legend(handles=legend_elements, 
-                              bbox_to_anchor=(0.5, 1.15), loc='center',
-                              ncol=3, frameon=True, fancybox=True, shadow=True, 
-                              framealpha=0.9, edgecolor='black')
-            legend.get_frame().set_facecolor('white')
+        # if legend_elements:
+        #     # Create legend with 2 rows, 3 columns outside the plot area at the top
+        #     legend = ax.legend(handles=legend_elements, 
+        #                       bbox_to_anchor=(0.5, 1.15), loc='center',
+        #                       ncol=3, frameon=True, fancybox=True, shadow=True, 
+        #                       framealpha=0.9, edgecolor='black')
+        #     legend.get_frame().set_facecolor('white')
         
         # Style the plot
         ax.spines['top'].set_visible(False)

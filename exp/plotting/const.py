@@ -9,7 +9,7 @@ strategy_labels = {
     "hits": r"$\mathit{Hits\text{-}Per\text{-}Slab}$",
     "lama": r"$\mathit{LAMA}$",
     "marginal-hits": r"$\mathit{Marginal\text{-}Hits}$",
-    "marginal-hits-tuned": r"$\mathit{Marginal\text{-}Hits\text{-}Tuned}$"
+    "marginal-hits-tuned": r"$\mathit{Adaptive\text{-}Marginal\text{-}Hits}$"
 }
 
 strategy_colors = {
@@ -62,13 +62,13 @@ allocator_linestyles = {
 }
 
 rcParams = {
-    'font.size': 26,           # Increased from 20
+    'font.size': 30,           # Increased from 20
     'axes.titlesize': 30,      # Increased from 24
-    'axes.labelsize': 28,      # Increased from 22
-    'xtick.labelsize': 26,     # Increased from 20
-    'ytick.labelsize': 26,     # Increased from 20
-    'legend.fontsize': 20,     # Increased from 18
-    'figure.titlesize': 28,    # Increased from 26
+    'axes.labelsize': 30,      # Increased from 22
+    'xtick.labelsize': 30,     # Increased from 26
+    'ytick.labelsize': 30,     # Increased from 28
+    'legend.fontsize': 28,     # Increased from 20
+    'figure.titlesize': 32,    # Increased from 26
     'figure.dpi': 300,
     'savefig.dpi': 300,
     'savefig.bbox': 'tight',

@@ -152,16 +152,16 @@ def create_twitter_prod_boxplots(csv_file, output_dir=None, need_all_strategy=Fa
             patch.set_facecolor(color)
             patch.set_alpha(1)  # Full saturation to match legend
             patch.set_edgecolor('black')
-            patch.set_linewidth(1)
+            patch.set_linewidth(2.5)  # Thicker box edge
         
         # Add inverted triangle markers for mean values with outstanding color
         for i, (pos, mean_val, color) in enumerate(zip(positions, mean_values, box_colors)):
             ax.scatter(pos, mean_val, marker='v', s=110, color='red', 
-                      edgecolors='black', linewidth=1.5, zorder=10)
+                      edgecolors='black', linewidth=2.5, zorder=10)  # Thicker mean marker edge
         
         # Style other box plot elements
         for element in ['whiskers', 'fliers', 'medians', 'caps']:
-            plt.setp(bp[element], color='black', linewidth=1.2)
+            plt.setp(bp[element], color='black', linewidth=2.5)  # Thicker lines
         
         # Set x-axis labels - simplified approach
         allocator_positions = []
@@ -199,6 +199,7 @@ def create_twitter_prod_boxplots(csv_file, output_dir=None, need_all_strategy=Fa
         ax.set_ylabel('Miss Ratio Reduction\nover LRU + disabled')
         ax.grid(True, alpha=0.3, axis='y')
         
+        
         # Create legend with matching saturation (alpha=1)
         legend_elements = []
         # Use strategy order from const.py
@@ -212,13 +213,13 @@ def create_twitter_prod_boxplots(csv_file, output_dir=None, need_all_strategy=Fa
                                      alpha=1, edgecolor='black',  # Match box alpha
                                      label=strategy_labels[strategy]))
         
-        if legend_elements:
-            # Create legend with 2 rows, 3 columns outside the plot area at the top
-            legend = ax.legend(handles=legend_elements, 
-                              bbox_to_anchor=(0.5, 1.15), loc='center',
-                              ncol=3, frameon=True, fancybox=True, shadow=True, 
-                              framealpha=0.9, edgecolor='black')
-            legend.get_frame().set_facecolor('white')
+        # if legend_elements:
+        #     # Create legend with 2 rows, 3 columns outside the plot area at the top
+        #     legend = ax.legend(handles=legend_elements, 
+        #                       bbox_to_anchor=(0.5, 1.15), loc='center',
+        #                       ncol=3, frameon=True, fancybox=True, shadow=True, 
+        #                       framealpha=0.9, edgecolor='black')
+        #     legend.get_frame().set_facecolor('white')
         
         # Style the plot
         ax.spines['top'].set_visible(False)

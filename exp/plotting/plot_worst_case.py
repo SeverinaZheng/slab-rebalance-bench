@@ -160,13 +160,13 @@ def create_twitter_prod_worst_case_mr_barplots(csv_file, output_dir=None, ratio=
                                      alpha=1, edgecolor='black',
                                      label=strategy_labels[strategy]))
         
-        if legend_elements:
-            # Create legend with 2 rows, 3 columns outside the plot area at the top
-            legend = ax.legend(handles=legend_elements, 
-                              bbox_to_anchor=(0.5, 1.15), loc='center',
-                              ncol=3, frameon=True, fancybox=True, shadow=True, 
-                              framealpha=0.9, edgecolor='black')
-            legend.get_frame().set_facecolor('white')
+        # if legend_elements:
+        #     # Create legend with 2 rows, 3 columns outside the plot area at the top
+        #     legend = ax.legend(handles=legend_elements, 
+        #                       bbox_to_anchor=(0.5, 1.15), loc='center',
+        #                       ncol=3, frameon=True, fancybox=True, shadow=True, 
+        #                       framealpha=0.9, edgecolor='black')
+        #     legend.get_frame().set_facecolor('white')
         
         # Style the plot
         ax.spines['top'].set_visible(False)

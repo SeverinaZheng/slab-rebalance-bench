@@ -111,14 +111,14 @@ def plot_cdn_bars(trace_name, csv_file, output_dir=None):
         line_x = x_positions[i] + 0.5
         ax.axvline(x=line_x, color='gray', linestyle='--', alpha=0.7, linewidth=1)
     
-    # Create custom legend
-    if legend_elements:
-        # Create legend with 2 rows, 3 columns outside the plot area at the top
-        legend = ax.legend(handles=legend_elements, 
-                          bbox_to_anchor=(0.5, 1.20), loc='center',
-                          ncol=3, frameon=True, fancybox=True, shadow=True, 
-                          framealpha=0.9, edgecolor='black')
-        legend.get_frame().set_facecolor('white')
+    # # Create custom legend
+    # if legend_elements:
+    #     # Create legend with 2 rows, 3 columns outside the plot area at the top
+    #     legend = ax.legend(handles=legend_elements, 
+    #                       bbox_to_anchor=(0.5, 1.20), loc='center',
+    #                       ncol=3, frameon=True, fancybox=True, shadow=True, 
+    #                       framealpha=0.9, edgecolor='black')
+    #     legend.get_frame().set_facecolor('white')
     
     # Set reasonable y-axis limits
     ax.set_ylim(bottom=0)
