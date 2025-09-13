@@ -13,7 +13,7 @@ strategy_labels = {
 }
 
 strategy_colors = {
-    "disabled": "#636EFA",
+    "disabled": "#0A127F",
     "tail-age": "#AB63FA", 
     "eviction-rate": "#FFA15A",
     "hits": "#00CC96",
@@ -63,11 +63,11 @@ allocator_linestyles = {
 
 rcParams = {
     'font.size': 30,           # Increased from 20
-    'axes.titlesize': 30,      # Increased from 24
-    'axes.labelsize': 30,      # Increased from 22
-    'xtick.labelsize': 30,     # Increased from 26
-    'ytick.labelsize': 30,     # Increased from 28
-    'legend.fontsize': 28,     # Increased from 20
+    'axes.titlesize': 32,      # Increased from 24
+    'axes.labelsize': 32,      # Increased from 22
+    'xtick.labelsize': 28,     # Increased from 26
+    'ytick.labelsize': 28,     # Increased from 28
+    'legend.fontsize': 27,     # Increased from 20
     'figure.titlesize': 32,    # Increased from 26
     'figure.dpi': 300,
     'savefig.dpi': 300,
